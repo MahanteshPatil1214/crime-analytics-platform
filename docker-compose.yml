@@ -1,0 +1,33 @@
+﻿services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: crime-neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_memory_heap_initial__size: 256m
+      NEO4J_dbms_memory_heap_max__size: 512m
+    volumes:
+      - neo4j_data:/data
+
+  elasticsearch:
+    image: elasticsearch:8.12.2
+    container_name: crime-elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms256m -Xmx512m
+      - cluster.name=crime-analytics
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+volumes:
+  neo4j_data:
+  es_data:

@@ -1,0 +1,19 @@
+{
+  "app": {
+    "title": "Crime Analytics Platform"
+  },
+  "chat": {
+    "title": "Crime Analytics Assistant",
+    "subtitle": "AI-powered law enforcement assistant",
+    "placeholder": "Type your query...",
+    "send": "Send",
+    "thinking": "Thinking..."
+  },
+  "dashboard": {
+    "title": "Analytics Dashboard",
+    "totalIncidents": "Total Incidents",
+    "activeCases": "Active Cases",
+    "highRiskAlerts": "High Risk Alerts",
+    "solvedRate": "Solved Rate"
+  }
+}

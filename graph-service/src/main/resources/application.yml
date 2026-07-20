@@ -1,0 +1,21 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: graph-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/crime_analytics
+    username: crime_admin
+    password: ${SPRING_DATASOURCE_PASSWORD:CrimeSecure2024!}
+    driver-class-name: org.postgresql.Driver
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: ${NEO4J_PASSWORD:}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}

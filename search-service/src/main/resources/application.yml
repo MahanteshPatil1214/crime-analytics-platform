@@ -1,0 +1,20 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: search-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/crime_analytics
+    username: crime_admin
+    password: CrimeSecure2024!
+    driver-class-name: org.postgresql.Driver
+  elasticsearch:
+    uris: http://localhost:9200
+    socket-timeout: 30s
+    connection-timeout: 5s
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
