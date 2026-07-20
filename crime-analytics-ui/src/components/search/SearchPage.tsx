@@ -1,33 +1,61 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Input, Button, Space, Select, Table, Tag, message, Drawer, Descriptions, Empty, Row, Col, Tooltip, Divider, DatePicker } from 'antd';
-import { SearchOutlined, FilterOutlined, EyeOutlined, CloseOutlined, DownloadOutlined } from '@ant-design/icons';
+import { SearchOutlined, FilterOutlined, EyeOutlined, CloseOutlined, DownloadOutlined, CopyOutlined } from '@ant-design/icons';
 import { caseApi } from '../../api/caseApi';
 import { lookupApi, District, CaseStatus, CrimeHead } from '../../api/lookupApi';
 import type { CaseSearchResult } from '../../types/case';
 import dayjs from 'dayjs';
 
-const statusColors: Record<string, string> = {
-  'REGISTERED': 'red',
-  'UNDER INVESTIGATION': 'gold',
-  'CHARGE SHEETED': 'purple',
-  'CLOSED': 'green',
-  'CONVICTED': 'volcano',
+const statusStyles: Record<string, React.CSSProperties> = {
+  'REGISTERED': { background: '#fff1f0', color: '#cf1322', border: '1px solid #ffa39e' },
+  'UNDER INVESTIGATION': { background: '#fffbe6', color: '#ad8b00', border: '1px solid #ffe58f' },
+  'CHARGE SHEETED': { background: '#f9f0ff', color: '#722ed1', border: '1px solid #d3adf7' },
+  'CLOSED': { background: '#f6ffed', color: '#389e0d', border: '1px solid #b7eb8f' },
+  'CONVICTED': { background: '#fff2e8', color: '#d4380d', border: '1px solid #ffbb96' },
+};
+
+const statusStyle = (name: string | undefined): React.CSSProperties => {
+  const raw = name?.toUpperCase().replace(/\s+/g, ' ') ?? '';
+  const key = Object.keys(statusStyles).find(k => raw.includes(k)) || raw;
+  return statusStyles[key] || { background: '#fafafa', color: '#666', border: '1px solid #d9d9d9' };
 };
 
 const fmtDate = (v: string) => v ? dayjs(v).format('DD MMM YYYY') : '-';
 
-const renderNames = (names: string[] | undefined, color: string) => {
+const fmtCrimeNo = (v: string) => {
+  if (!v) return '-';
+  const short = v.length > 18 ? v.substring(0, 10) + '...' + v.slice(-4) : v;
+  return <Tooltip title={v}><span style={{ fontFamily: 'monospace', fontSize: 12, color: '#1677ff', cursor: 'pointer' }}>{short}</span></Tooltip>;
+};
+
+const renderPeople = (names: string[] | undefined, dotColor: string, label: string) => {
   if (!names || names.length === 0) {
-    return <span style={{ color: '#bbb' }}>—</span>;
+    return <span style={{ color: '#bbb', fontSize: 12 }}>—</span>;
   }
-  return names.map(n => <Tag key={n} color={color} style={{ marginBottom: 2 }}>{n}</Tag>);
+  return (
+    <span style={{ fontSize: 12, lineHeight: 1.8 }}>
+      {names.map((n, i) => (
+        <span key={n}>
+          {i > 0 && <span style={{ color: '#ccc' }}>, </span>}
+          <span style={{ color: dotColor, fontWeight: 600 }}>{n}</span>
+        </span>
+      ))}
+    </span>
+  );
 };
 
 const renderActs = (sections: string[] | undefined) => {
   if (!sections || sections.length === 0) {
-    return <span style={{ color: '#bbb' }}>—</span>;
+    return <span style={{ color: '#bbb', fontSize: 12 }}>—</span>;
   }
-  return sections.slice(0, 3).map(a => <Tag key={a} style={{ fontSize: 11 }}>{a}</Tag>);
+  const first = sections[0];
+  const rest = sections.length - 1;
+  return (
+    <span>
+      <span style={{ fontFamily: 'monospace', fontSize: 12, background: '#f5f5f5', padding: '1px 6px', borderRadius: 3, color: '#555' }}>{first}</span>
+      {rest > 0 && <Tag style={{ fontSize: 10, marginLeft: 4, lineHeight: '16px', padding: '0 4px', border: 'none', background: '#f0f0f0', color: '#888' }}>+{rest}</Tag>}
+    </span>
+  );
 };
 
 function exportCSV(results: CaseSearchResult[]) {
@@ -131,60 +159,71 @@ export const SearchPage: React.FC = () => {
     setDrawerVisible(true);
   };
 
+  const cellStyle: React.CSSProperties = { padding: '8px 12px', fontSize: 13, lineHeight: 1.5 };
+
   const columns = [
     {
-      title: 'Crime No', dataIndex: 'crimeNo', key: 'crimeNo', width: 130,
-      render: (v: string) => <Tag color="blue" style={{ fontFamily: 'monospace' }}>{v}</Tag>,
+      title: 'Crime No', dataIndex: 'crimeNo', key: 'crimeNo', width: 150,
+      onCell: () => ({ style: { ...cellStyle } }),
+      render: (v: string) => fmtCrimeNo(v),
     },
     {
       title: 'Date', dataIndex: 'crimeRegisteredDate', key: 'date', width: 110,
-      render: (v: string) => fmtDate(v),
+      onCell: () => ({ style: { ...cellStyle, textAlign: 'right' as const } }),
+      render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#888' }}>{fmtDate(v)}</span>,
     },
     {
-      title: 'District', dataIndex: 'districtName', key: 'district', width: 110,
-      render: (v: string) => v || <span style={{ color: '#bbb' }}>—</span>,
-    },
-    {
-      title: 'Police Station', dataIndex: 'policeStationName', key: 'station', width: 130,
-      render: (v: string) => v || <span style={{ color: '#bbb' }}>—</span>,
+      title: 'Location', key: 'location', width: 180,
+      onCell: () => ({ style: { ...cellStyle } }),
+      render: (_: any, r: CaseSearchResult) => (
+        <div style={{ lineHeight: 1.4 }}>
+          <div style={{ fontSize: 13, color: '#333' }}>{r.districtName || <span style={{ color: '#bbb' }}>—</span>}</div>
+          <div style={{ fontSize: 11, color: '#999' }}>{r.policeStationName || ''}</div>
+        </div>
+      ),
     },
     {
       title: 'Crime Head', dataIndex: 'crimeHeadName', key: 'crimeHead', width: 150,
-      render: (v: string) => v ? <Tag color="geekblue">{v}</Tag> : <span style={{ color: '#bbb' }}>—</span>,
+      onCell: () => ({ style: { ...cellStyle } }),
+      render: (v: string) => v
+        ? <span style={{ color: '#333', fontSize: 13 }}>{v}</span>
+        : <span style={{ color: '#bbb' }}>—</span>,
     },
     {
       title: 'Status', dataIndex: 'statusName', key: 'status', width: 130,
+      onCell: () => ({ style: { ...cellStyle } }),
       render: (v: string) => {
-        if (!v) return <Tag>—</Tag>;
-        const color = statusColors[v.toUpperCase().replace(/\s+/g, ' ').trim()] || 'default';
-        return <Tag color={color} style={{ fontWeight: 600 }}>{v}</Tag>;
+        if (!v) return <span style={{ color: '#bbb' }}>—</span>;
+        return <span style={{ ...statusStyle(v), padding: '2px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-block' }}>{v}</span>;
       },
     },
     {
-      title: 'Accused', key: 'accused', width: 150, ellipsis: true,
-      render: (_: any, r: CaseSearchResult) => renderNames(r.accusedNames, 'red'),
-    },
-    {
-      title: 'Victims', key: 'victims', width: 130, ellipsis: true,
-      render: (_: any, r: CaseSearchResult) => renderNames(r.victimNames, 'green'),
+      title: 'People', key: 'people', width: 200,
+      onCell: () => ({ style: { ...cellStyle } }),
+      render: (_: any, r: CaseSearchResult) => (
+        <div style={{ lineHeight: 1.7 }}>
+          {r.accusedNames?.length > 0 && (
+            <div><span style={{ color: '#cf1322', fontSize: 11, marginRight: 4 }}>A:</span>{renderPeople(r.accusedNames, '#cf1322', 'A')}</div>
+          )}
+          {r.victimNames?.length > 0 && (
+            <div><span style={{ color: '#389e0d', fontSize: 11, marginRight: 4 }}>V:</span>{renderPeople(r.victimNames, '#389e0d', 'V')}</div>
+          )}
+          {(!r.accusedNames?.length && !r.victimNames?.length) && <span style={{ color: '#bbb', fontSize: 12 }}>—</span>}
+        </div>
+      ),
     },
     {
       title: 'Acts', key: 'acts', width: 110,
+      onCell: () => ({ style: { ...cellStyle } }),
       render: (_: any, r: CaseSearchResult) => renderActs(r.actSections),
     },
     {
-      title: 'Facts', dataIndex: 'briefFacts', key: 'facts', ellipsis: true,
-      render: (v: string) => {
-        if (!v) return <span style={{ color: '#bbb' }}>—</span>;
-        return <Tooltip title={v}><span>{v.substring(0, 80)}...</span></Tooltip>;
-      },
-    },
-    {
-      title: 'Action', key: 'action', width: 64,
+      title: '', key: 'action', width: 48,
+      onCell: () => ({ style: { ...cellStyle, textAlign: 'center' as const } }),
       render: (_: any, r: CaseSearchResult) => (
-        <Tooltip title="Quick Preview">
-          <Button type="default" size="small" icon={<EyeOutlined />} onClick={() => openDrawer(r)}
-            style={{ borderRadius: 4 }} />
+        <Tooltip title={r.briefFacts ? `Preview: ${r.briefFacts.substring(0, 120)}...` : 'View Details'}>
+          <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => openDrawer(r)}
+            style={{ color: '#999' }} />
         </Tooltip>
       ),
     },
@@ -194,68 +233,64 @@ export const SearchPage: React.FC = () => {
 
   return (
     <div style={{ padding: 16 }}>
-      <Card style={{ marginBottom: 16 }} size="small">
-        <Row gutter={[12, 12]}>
+      <Card style={{ marginBottom: 16 }} size="small" bodyStyle={{ padding: 16 }}>
+        <Row gutter={[8, 8]}>
           <Col xs={24} sm={12} md={6} lg={4}>
             <Input placeholder="Crime No" value={crimeNo} onChange={e => setCrimeNo(e.target.value)}
-              prefix={<SearchOutlined />} allowClear size="middle" />
+              prefix={<SearchOutlined />} allowClear size="small" />
           </Col>
-          <Col xs={24} sm={12} md={6} lg={5}>
-            <Input placeholder="Brief Facts (keyword)" value={briefFacts} onChange={e => setBriefFacts(e.target.value)}
-              prefix={<SearchOutlined />} allowClear size="middle" />
+          <Col xs={24} sm={12} md={6} lg={4}>
+            <Input placeholder="Brief Facts" value={briefFacts} onChange={e => setBriefFacts(e.target.value)}
+              prefix={<SearchOutlined />} allowClear size="small" />
           </Col>
           <Col xs={12} sm={8} md={4} lg={3}>
             <Select placeholder="District" value={selectedDistrict} onChange={v => setSelectedDistrict(v)}
-              allowClear style={{ width: '100%' }} showSearch optionFilterProp="children" size="middle">
+              allowClear style={{ width: '100%' }} showSearch optionFilterProp="children" size="small">
               {districts.map(d => <Select.Option key={d.districtId} value={d.districtId}>{d.districtName}</Select.Option>)}
             </Select>
           </Col>
           <Col xs={12} sm={8} md={4} lg={3}>
             <Select placeholder="Status" value={selectedStatus} onChange={v => setSelectedStatus(v)}
-              allowClear style={{ width: '100%' }} size="middle">
+              allowClear style={{ width: '100%' }} size="small">
               {statuses.map(s => <Select.Option key={s.caseStatusId} value={s.caseStatusId}>{s.caseStatusName}</Select.Option>)}
             </Select>
           </Col>
-          <Col xs={24} sm={8} md={6} lg={4}>
+          <Col xs={24} sm={8} md={5} lg={4}>
             <Select placeholder="Crime Head" value={selectedCrimeHead} onChange={v => setSelectedCrimeHead(v)}
-              allowClear style={{ width: '100%' }} showSearch optionFilterProp="children" size="middle">
+              allowClear style={{ width: '100%' }} showSearch optionFilterProp="children" size="small">
               {crimeHeads.map(c => <Select.Option key={c.crimeHeadId} value={c.crimeHeadId}>{c.crimeGroupName}</Select.Option>)}
             </Select>
           </Col>
-          <Col xs={24} sm={12} md={8} lg={5}>
+          <Col xs={24} sm={12} md={8} lg={6}>
             <DatePicker.RangePicker
               value={dateRange as any}
               onChange={dates => setDateRange(dates as any)}
               style={{ width: '100%' }}
-              size="middle"
+              size="small"
               placeholder={['Start Date', 'End Date']}
             />
           </Col>
         </Row>
-        <Divider style={{ margin: '10px 0' }} />
-        <Space wrap>
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Button type="primary" icon={<SearchOutlined />} onClick={() => doSearch(0)} loading={loading}
-            size="middle">Search</Button>
+            size="small">Search</Button>
           {filtersActive && (
-            <Button type="link" onClick={clearFilters} style={{ color: '#999' }}
-              icon={<CloseOutlined />}>Clear Filters</Button>
+            <Button type="link" onClick={clearFilters} size="small"
+              style={{ color: '#999', padding: 0 }}>Clear Filters</Button>
           )}
-        </Space>
+        </div>
       </Card>
 
-      <Card bodyStyle={{ padding: 0 }} size="small"
-        title={
-          <span style={{ fontSize: 14, color: '#666' }}>
-            <FilterOutlined style={{ marginRight: 6 }} />
-            {total} case{total !== 1 ? 's' : ''} found
-          </span>
-        }
+      <Card
+        size="small"
+        bodyStyle={{ padding: 0 }}
+        title={<span style={{ fontSize: 13, color: '#666' }}><FilterOutlined style={{ marginRight: 6 }} />{total} case{total !== 1 ? 's' : ''} found</span>}
         extra={
-          results.length > 0 && (
-            <Button icon={<DownloadOutlined />} size="small" onClick={() => exportCSV(results)}>
+          results.length > 0 ? (
+            <Button icon={<DownloadOutlined />} size="small" onClick={() => exportCSV(results)} type="text" style={{ color: '#666' }}>
               Export CSV
             </Button>
-          )
+          ) : null
         }
       >
         <Table
@@ -269,7 +304,7 @@ export const SearchPage: React.FC = () => {
             pageSize,
             total,
             showSizeChanger: true,
-            showTotal: (t) => `${t} cases total`,
+            showTotal: (t) => `${t} cases`,
             onChange: (p, ps) => { setPage(p - 1); setPageSize(ps); doSearch(p - 1); },
           }}
           locale={{ emptyText: <Empty description="No cases match your filters" /> }}
@@ -288,7 +323,7 @@ export const SearchPage: React.FC = () => {
           <>
             <Descriptions column={1} size="small" bordered style={{ marginBottom: 16 }}>
               <Descriptions.Item label="Crime No">
-                <Tag color="blue">{drawerCase.crimeNo}</Tag>
+                <span style={{ fontFamily: 'monospace' }}>{drawerCase.crimeNo}</span>
               </Descriptions.Item>
               <Descriptions.Item label="Case No">{drawerCase.caseNo || '-'}</Descriptions.Item>
               <Descriptions.Item label="Registered Date">
@@ -297,12 +332,12 @@ export const SearchPage: React.FC = () => {
               <Descriptions.Item label="District">{drawerCase.districtName || '-'}</Descriptions.Item>
               <Descriptions.Item label="Police Station">{drawerCase.policeStationName || '-'}</Descriptions.Item>
               <Descriptions.Item label="Crime Head">
-                {drawerCase.crimeHeadName ? <Tag color="geekblue">{drawerCase.crimeHeadName}</Tag> : '-'}
+                <span style={{ color: '#333' }}>{drawerCase.crimeHeadName || '-'}</span>
               </Descriptions.Item>
               <Descriptions.Item label="Status">
-                <Tag color={statusColors[drawerCase.statusName?.toUpperCase().replace(/\s+/g, ' ').trim()] || 'default'}>
+                <span style={{ ...statusStyle(drawerCase.statusName), padding: '2px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-block' }}>
                   {drawerCase.statusName || '-'}
-                </Tag>
+                </span>
               </Descriptions.Item>
             </Descriptions>
 
@@ -314,28 +349,28 @@ export const SearchPage: React.FC = () => {
             {drawerCase.accusedNames?.length > 0 && (
               <>
                 <Divider orientation="left" orientationMargin={0}>Accused</Divider>
-                <div>{drawerCase.accusedNames.map(a => <Tag key={a} color="red">{a}</Tag>)}</div>
+                <div style={{ fontSize: 13, color: '#cf1322', lineHeight: 1.8 }}>{drawerCase.accusedNames.join(', ')}</div>
               </>
             )}
 
             {drawerCase.victimNames?.length > 0 && (
               <>
                 <Divider orientation="left" orientationMargin={0}>Victims</Divider>
-                <div>{drawerCase.victimNames.map(v => <Tag key={v} color="green">{v}</Tag>)}</div>
+                <div style={{ fontSize: 13, color: '#389e0d', lineHeight: 1.8 }}>{drawerCase.victimNames.join(', ')}</div>
               </>
             )}
 
             {drawerCase.complainantNames?.length > 0 && (
               <>
                 <Divider orientation="left" orientationMargin={0}>Complainants</Divider>
-                <div>{drawerCase.complainantNames.map(c => <Tag key={c} color="orange">{c}</Tag>)}</div>
+                <div style={{ fontSize: 13, color: '#d46b08', lineHeight: 1.8 }}>{drawerCase.complainantNames.join(', ')}</div>
               </>
             )}
 
             {drawerCase.actSections?.length > 0 && (
               <>
                 <Divider orientation="left" orientationMargin={0}>Act Sections</Divider>
-                <div>{drawerCase.actSections.map(a => <Tag key={a} style={{ fontFamily: 'monospace' }}>{a}</Tag>)}</div>
+                <div>{drawerCase.actSections.map(a => <Tag key={a} style={{ fontFamily: 'monospace', background: '#f5f5f5', border: 'none', color: '#555' }}>{a}</Tag>)}</div>
               </>
             )}
           </>
