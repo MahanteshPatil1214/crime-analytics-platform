@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,11 +52,13 @@ public class FinancialTransactionController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     public ResponseEntity<FinancialTransaction> createTransaction(@RequestBody FinancialTransaction transaction) {
         return ResponseEntity.ok(service.createTransaction(transaction));
     }
 
     @PostMapping("/{id}/flag")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     public ResponseEntity<FinancialTransaction> flagTransaction(
             @PathVariable UUID id,
             @RequestBody Map<String, String> body) {

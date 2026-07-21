@@ -9,3 +9,4 @@ target/
 .vscode/
 node_modules/
 dist/
+.env

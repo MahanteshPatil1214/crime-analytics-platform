@@ -7,6 +7,7 @@ import gov.lawenforcement.search.repository.PersonSearchRepository;
 import gov.lawenforcement.search.repository.FinancialSearchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -24,6 +25,7 @@ public class SearchController {
     private final FinancialSearchRepository financialRepo;
 
     @PostMapping("/reindex")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> reindex() {
         Map<String, Object> result = indexingService.indexAll();
         return ResponseEntity.ok(result);

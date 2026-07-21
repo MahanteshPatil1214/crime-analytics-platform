@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: financial-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/crime-platform}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/crime_analytics}
     username: ${SPRING_DATASOURCE_USERNAME:crime_admin}

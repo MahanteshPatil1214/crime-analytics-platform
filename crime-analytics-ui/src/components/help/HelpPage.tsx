@@ -16,6 +16,12 @@ import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph, Text } = Typography;
 
+const roleTags = {
+  all: { label: 'All Users', color: 'green', actions: '' },
+  adminOfficer: { label: 'ADMIN / OFFICER', color: 'blue', actions: '' },
+  adminWrite: { label: 'ADMIN Only', color: 'red', actions: 'Populate / Reindex' },
+};
+
 const features = [
   {
     icon: <DashboardOutlined style={{ fontSize: 28, color: '#1890ff' }} />,
@@ -23,9 +29,11 @@ const features = [
     path: '/dashboard',
     color: '#e6f7ff',
     description: 'Get a bird\'s-eye view of all crime data at a glance.',
+    access: [roleTags.all],
     howToUse: [
+      'Get a bird\'s-eye view of all crime data at a glance.',
       'Total case counts by status (Open, Under Investigation, Charge Sheeted, Closed)',
-      'District-wise bar chart showing crime distribution across Karnataka',
+      'District-wise bar chart showing crime distribution across regions',
       'Crime Head pie chart showing types of offences (Property, Body, Economic, etc.)',
       'Financial summary with flagged suspicious transactions count',
     ],
@@ -40,6 +48,7 @@ const features = [
     path: '/incidents',
     color: '#fff1f0',
     description: 'Browse, search, and view detailed FIR case records.',
+    access: [roleTags.all],
     howToUse: [
       'View all registered FIR cases in a searchable list',
       'Filter by district, status, or crime head using the dropdown filters',
@@ -58,6 +67,7 @@ const features = [
     path: '/financial',
     color: '#fffbe6',
     description: 'Track financial transactions linked to cases and detect suspicious activity.',
+    access: [roleTags.all],
     howToUse: [
       'View all financial transactions (Wire Transfer, Cash Deposit, Crypto, etc.)',
       'Filter by transaction type or search by account number',
@@ -76,6 +86,7 @@ const features = [
     path: '/reports',
     color: '#f9f0ff',
     description: 'Generate black-and-white typewriter-style PDF reports for cases.',
+    access: [roleTags.adminOfficer],
     howToUse: [
       'Incident Report tab: Enter FIR Number, Police Station, and District to generate a FIR PDF',
       'Criminal Profile tab: Enter person details to generate a suspect profile report',
@@ -93,6 +104,7 @@ const features = [
     path: '/graph',
     color: '#f9f0ff',
     description: 'Interactive graph visualization of criminal networks using Neo4j. Explore relationships between persons and cases.',
+    access: [roleTags.all, roleTags.adminWrite],
     howToUse: [
       'Click "Populate from DB" to load all cases, accused, victims, and complainants into Neo4j',
       'Use the search bar to find persons by name and center the graph on them',
@@ -113,6 +125,7 @@ const features = [
     path: '/search',
     color: '#fff0f6',
     description: 'Full-text search across cases, persons, and financial transactions using Elasticsearch.',
+    access: [roleTags.all, roleTags.adminWrite],
     howToUse: [
       'Type any keyword to search across all data: names, crime numbers, case facts',
       'Switch between Cases, Persons, and Financial tabs to filter results',
@@ -133,6 +146,7 @@ const features = [
     path: '/chat',
     color: '#e6fffb',
     description: 'Chat with the AI to search cases, get statistics, and explore data using natural language. Supports English and Kannada (ಕನ್ನಡ).',
+    access: [roleTags.all],
     howToUse: [
       'Type natural language queries like "show me all open cases" or "list all accused"',
       'Kannada: "ಎಲ್ಲಾ ಪ್ರಕರಣಗಳನ್ನು ತೋರಿಸಿ" (show all cases), "ಎಲ್ಲಾ ಅಪರಾಧಿಗಳು" (all accused)',
@@ -245,6 +259,12 @@ export const HelpPage: React.FC = () => {
               </Space>
               <Paragraph type="secondary" style={{ margin: '4px 0 12px' }}>{feature.description}</Paragraph>
 
+              <Space style={{ marginBottom: 8 }}>
+                {feature.access.map((a) => (
+                  <Tag key={a.label} color={a.color}>{a.label}{a.actions && ` — ${a.actions}`}</Tag>
+                ))}
+              </Space>
+
               <Text strong>How to use:</Text>
               <List
                 size="small"
@@ -299,18 +319,18 @@ export const HelpPage: React.FC = () => {
       <Card bordered={false} style={{ marginTop: 24, background: '#fafafa' }}>
         <Title level={5}>System Architecture</Title>
         <Row gutter={[16, 12]}>
-          <Col span={8}><Tag color="blue">Eureka Service Registry</Tag> :8761</Col>
-          <Col span={8}><Tag color="purple">API Gateway</Tag> :8080</Col>
-          <Col span={8}><Tag color="green">Frontend (React)</Tag> :3000</Col>
-          <Col span={8}><Tag color="red">Incident Service</Tag> :8082</Col>
-          <Col span={8}><Tag color="cyan">AI Assistant Service</Tag> :8087</Col>
-          <Col span={8}><Tag color="orange">Report Service</Tag> :8089</Col>
-          <Col span={8}><Tag color="purple">Graph Service</Tag> :8084 (Neo4j)</Col>
-          <Col span={8}><Tag color="magenta">Search Service</Tag> :8085 (Elasticsearch)</Col>
+          <Col span={8}><Tag color="blue">Eureka Service Registry</Tag></Col>
+          <Col span={8}><Tag color="purple">API Gateway</Tag></Col>
+          <Col span={8}><Tag color="green">Frontend (React)</Tag></Col>
+          <Col span={8}><Tag color="red">Incident Service</Tag></Col>
+          <Col span={8}><Tag color="cyan">AI Assistant Service</Tag></Col>
+          <Col span={8}><Tag color="orange">Report Service</Tag></Col>
+          <Col span={8}><Tag color="purple">Graph Service</Tag> (Neo4j)</Col>
+          <Col span={8}><Tag color="magenta">Search Service</Tag> (Elasticsearch)</Col>
         </Row>
         <Divider />
         <Text type="secondary" style={{ fontSize: 12 }}>
-          Karnataka Police FIR System - 32 database tables | 15 FIR cases | 15 Complainants | 9 Victims | 15 Accused | 12 Arrests | 10 Financial Transactions | Neo4j Graph | Elasticsearch Index
+          FIR System — 32 database tables | 15 FIR cases | 15 Complainants | 9 Victims | 15 Accused | 12 Arrests | 10 Financial Transactions | Neo4j Graph | Elasticsearch Index
         </Text>
       </Card>
     </div>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../stores/authStore';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
@@ -7,10 +8,14 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use(async (config) => {
-  const stored = localStorage.getItem('keycloak-token');
-  if (stored) {
-    const token = JSON.parse(stored);
-    config.headers.Authorization = `Bearer ${token}`;
+  const { keycloak, authenticated } = useAuthStore.getState();
+  if (keycloak && authenticated) {
+    try {
+      await keycloak.updateToken(10);
+      config.headers.Authorization = `Bearer ${keycloak.token}`;
+    } catch {
+      keycloak.logout({ redirectUri: window.location.origin + '/login' });
+    }
   }
   return config;
 });
@@ -19,8 +24,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('keycloak-token');
-      window.location.href = '/login';
+      useAuthStore.getState().keycloak?.logout({ redirectUri: window.location.origin + '/login' });
     }
     return Promise.reject(error);
   }

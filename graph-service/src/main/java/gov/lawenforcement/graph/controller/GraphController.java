@@ -4,6 +4,7 @@ import gov.lawenforcement.graph.service.GraphPopulatorService;
 import lombok.RequiredArgsConstructor;
 import org.neo4j.driver.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -17,6 +18,7 @@ public class GraphController {
     private final Driver neo4jDriver;
 
     @PostMapping("/populate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> populate() {
         Map<String, Object> result = new LinkedHashMap<>();
         try {

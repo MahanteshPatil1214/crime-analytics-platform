@@ -1,0 +1,61 @@
+{
+  "realm": "crime-platform",
+  "displayName": "Crime Analytics Platform",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "ADMIN", "description": "Full system access" },
+      { "name": "OFFICER", "description": "Read and write cases" },
+      { "name": "VIEWER", "description": "Read-only access" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "crime-web",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": ["http://localhost:3000/*", "http://localhost:3001/*"],
+      "webOrigins": ["http://localhost:3000", "http://localhost:3001"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "defaultClientScopes": ["openid", "profile", "email", "roles"],
+      "fullScopeAllowed": true
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@crime-platform.local",
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["ADMIN"]
+    },
+    {
+      "username": "officer",
+      "enabled": true,
+      "firstName": "Officer",
+      "lastName": "User",
+      "email": "officer@crime-platform.local",
+      "credentials": [{ "type": "password", "value": "officer", "temporary": false }],
+      "realmRoles": ["OFFICER"]
+    },
+    {
+      "username": "viewer",
+      "enabled": true,
+      "firstName": "Viewer",
+      "lastName": "User",
+      "email": "viewer@crime-platform.local",
+      "credentials": [{ "type": "password", "value": "viewer", "temporary": false }],
+      "realmRoles": ["VIEWER"]
+    }
+  ]
+}

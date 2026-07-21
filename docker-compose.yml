@@ -99,7 +99,9 @@
       KC_DB_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-CrimeSecure2024!}
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-    command: start-dev
+    volumes:
+      - ./keycloak/crime-platform-realm.json:/opt/keycloak/data/import/crime-platform-realm.json
+    command: start-dev --import-realm
     depends_on:
       postgres:
         condition: service_healthy

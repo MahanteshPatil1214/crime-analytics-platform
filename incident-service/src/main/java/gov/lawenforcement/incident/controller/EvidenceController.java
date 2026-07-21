@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +28,7 @@ public class EvidenceController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @Operation(summary = "Upload evidence file", description = "Upload a file (PDF, image, document) attached to a case")
     public ResponseEntity<Evidence> upload(
             @Parameter(description = "Case master ID") @PathVariable Integer caseId,
@@ -57,6 +59,7 @@ public class EvidenceController {
     }
 
     @DeleteMapping("/{evidenceId}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Delete evidence file")
     public ResponseEntity<Void> delete(
             @Parameter(description = "Case master ID") @PathVariable Integer caseId,

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -44,6 +45,7 @@ public class ReportController {
     }
 
     @PostMapping("/incident")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     public ResponseEntity<byte[]> generateIncidentReport(@RequestBody ReportRequest request) {
         log.info("Received incident report request for FIR: {}", request.getFirNumber());
 
@@ -76,6 +78,7 @@ public class ReportController {
     }
 
     @PostMapping("/criminal-profile")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     public ResponseEntity<byte[]> generateCriminalProfile(@RequestBody ReportRequest request) {
         log.info("Received criminal profile request for: {}", request.getPersonName());
 

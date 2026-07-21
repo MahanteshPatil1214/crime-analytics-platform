@@ -1,0 +1,47 @@
+﻿{
+    "id":  "b90fa8fb-c9ab-467e-8751-a6b059eaf6af",
+    "clientId":  "crime-web",
+    "surrogateAuthRequired":  false,
+    "enabled":  true,
+    "alwaysDisplayInConsole":  false,
+    "clientAuthenticatorType":  "client-secret",
+    "redirectUris":  [
+                         "http://localhost:3000/*",
+                         "http://localhost:3001/*"
+                     ],
+    "webOrigins":  [
+                       "http://localhost:3001",
+                       "http://localhost:3000"
+                   ],
+    "notBefore":  0,
+    "bearerOnly":  false,
+    "consentRequired":  false,
+    "standardFlowEnabled":  true,
+    "implicitFlowEnabled":  false,
+    "directAccessGrantsEnabled":  true,
+    "serviceAccountsEnabled":  false,
+    "publicClient":  true,
+    "frontchannelLogout":  false,
+    "protocol":  "openid-connect",
+    "attributes":  {
+                       "post.logout.redirect.uris":  "+"
+                   },
+    "authenticationFlowBindingOverrides":  {
+
+                                           },
+    "fullScopeAllowed":  true,
+    "nodeReRegistrationTimeout":  -1,
+    "defaultClientScopes":  [
+                                "roles",
+                                "profile",
+                                "email"
+                            ],
+    "optionalClientScopes":  [
+
+                             ],
+    "access":  {
+                   "view":  true,
+                   "configure":  true,
+                   "manage":  true
+               }
+}

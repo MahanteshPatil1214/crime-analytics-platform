@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, Input, Button, Space, Spin, message, Tag, Empty, Drawer, Tooltip, Dropdown } from 'antd';
 import { SearchOutlined, ReloadOutlined, ZoomInOutlined, ZoomOutOutlined, ExpandOutlined, DownloadOutlined, FullscreenOutlined, NodeIndexOutlined, ClearOutlined, FilterOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import apiClient from '../../api/apiClient';
 import cytoscape from 'cytoscape';
 
 const { Search } = Input;
@@ -385,8 +385,8 @@ export const GraphPage: React.FC = () => {
     setDetailVisible(false);
     try {
       const [statsRes, fullRes] = await Promise.all([
-        axios.get('/api/v1/graph/stats'),
-        axios.get('/api/v1/graph/full'),
+        apiClient.get('/api/v1/graph/stats'),
+        apiClient.get('/api/v1/graph/full'),
       ]);
       if (!mountedRef.current) return;
       setStats(statsRes.data);
@@ -407,7 +407,7 @@ export const GraphPage: React.FC = () => {
     setHighlightId(null);
     setDetailVisible(false);
     try {
-      const res = await axios.get(`/api/v1/graph/person/${personId}/network`);
+      const res = await apiClient.get(`/api/v1/graph/person/${personId}/network`);
       if (!mountedRef.current) return;
       setGraphData(res.data);
     } catch (err) {
@@ -525,7 +525,7 @@ export const GraphPage: React.FC = () => {
   const populateGraph = async () => {
     setLoading(true);
     try {
-      await axios.post('/api/v1/graph/populate');
+      await apiClient.post('/api/v1/graph/populate');
       message.success('Graph populated from database');
       loadAll();
     } catch (err: any) {
@@ -556,7 +556,7 @@ export const GraphPage: React.FC = () => {
     }
     setLoading(true);
     try {
-      const res = await axios.get('/api/v1/graph/search', { params: { q: searchQuery } });
+      const res = await apiClient.get('/api/v1/graph/search', { params: { q: searchQuery } });
       const persons = res.data.results || [];
       if (persons.length > 0) {
         loadPersonNetwork(persons[0].personId);
@@ -679,10 +679,10 @@ export const GraphPage: React.FC = () => {
                 <Tag color="green">{totalRels} Rel.</Tag>
               </Space>
             )}
-            <Button icon={<FilterOutlined />} size="small" onClick={populateGraph} type="default" ghost>
+            <Button icon={<FilterOutlined />} size="small" onClick={populateGraph} type="primary">
               Populate
             </Button>
-            <Button icon={<ReloadOutlined />} size="small" onClick={loadAll} loading={loading} type="primary" ghost>
+            <Button icon={<ReloadOutlined />} size="small" onClick={loadAll} loading={loading}>
               Refresh
             </Button>
           </Space>
