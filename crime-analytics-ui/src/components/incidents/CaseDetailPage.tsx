@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Table, Tag, Descriptions, Spin, Empty, Statistic, Button, message } from 'antd';
-import { ArrowLeftOutlined, UserOutlined, DollarOutlined, WarningOutlined, SafetyOutlined, FilePdfOutlined, DownloadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, UserOutlined, DollarOutlined, WarningOutlined, SafetyOutlined, FilePdfOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { caseApi } from '../../api/caseApi';
 import { lookupApi, Unit, Court as CourtType, CaseCategory, CrimeHead, Employee, GravityOffence } from '../../api/lookupApi';
+import { evidenceApi, Evidence } from '../../api/evidenceApi';
 import { financialApi } from '../../api/financialApi';
 import { reportApi } from '../../api/reportApi';
 import { CaseDetail, Involvement, ActSection, Arrest } from '../../types/case';
@@ -21,6 +22,8 @@ export const CaseDetailPage: React.FC = () => {
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [involvements, setInvolvements] = useState<Involvement[]>([]);
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([]);
+  const [evidenceList, setEvidenceList] = useState<Evidence[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
@@ -79,14 +82,16 @@ export const CaseDetailPage: React.FC = () => {
     const caseId = Number(id);
     const load = async () => {
       try {
-        const [det, invs, txns] = await Promise.all([
+        const [det, invs, txns, evs] = await Promise.all([
           caseApi.getById(caseId),
           caseApi.getInvolvements(caseId).catch(() => []),
           financialApi.getByCase(caseId).catch(() => []),
+          evidenceApi.list(caseId).catch(() => []),
         ]);
         setDetail(det);
         setInvolvements(Array.isArray(invs) ? invs : []);
         setTransactions(Array.isArray(txns) ? txns : []);
+        setEvidenceList(Array.isArray(evs) ? evs : []);
       } catch (err) {
         console.error('Failed to load case:', err);
       } finally {
@@ -305,6 +310,68 @@ export const CaseDetailPage: React.FC = () => {
           </Col>
         </Row>
       )}
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col span={24}>
+          <Card title="Evidence" bordered={false}
+            extra={
+              <label style={{ cursor: 'pointer', color: '#1890ff', fontSize: 13 }}>
+                <input type="file" hidden onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file || !id) return;
+                  setUploading(true);
+                  try {
+                    const ev = await evidenceApi.upload(Number(id), file);
+                    setEvidenceList(prev => [...prev, ev]);
+                    message.success(`${file.name} uploaded`);
+                  } catch { message.error('Upload failed'); }
+                  finally { setUploading(false); e.target.value = ''; }
+                }} />
+                {uploading ? 'Uploading...' : '+ Upload File'}
+              </label>
+            }
+          >
+            {evidenceList.length === 0 ? (
+              <Empty description="No evidence uploaded" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            ) : (
+              <Table
+                rowKey="evidenceId"
+                dataSource={evidenceList}
+                pagination={false}
+                size="small"
+                columns={[
+                  { title: 'File', dataIndex: 'originalName', render: (v: string) => <span style={{ fontWeight: 500 }}>{v}</span> },
+                  { title: 'Type', dataIndex: 'fileType', render: (v: string) => v || '—' },
+                  { title: 'Size', dataIndex: 'fileSize', render: (v: number) => {
+                    if (!v) return '—';
+                    const kb = v / 1024;
+                    return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
+                  }},
+                  { title: 'Description', dataIndex: 'description', render: (v: string) => v || '—' },
+                  { title: 'Uploaded', dataIndex: 'uploadDate', render: (v: string) => v ? new Date(v).toLocaleDateString('en-IN') : '—' },
+                  {
+                    title: 'Action', key: 'action', width: 120,
+                    render: (_: any, r: Evidence) => (
+                      <>
+                        <Button type="link" size="small" icon={<DownloadOutlined />}
+                          href={evidenceApi.download(Number(id), r.evidenceId)} target="_blank">Download</Button>
+                        <Button type="link" size="small" danger
+                          onClick={async () => {
+                            try {
+                              await evidenceApi.delete(Number(id), r.evidenceId);
+                              setEvidenceList(prev => prev.filter(e => e.evidenceId !== r.evidenceId));
+                              message.success('Deleted');
+                            } catch { message.error('Delete failed'); }
+                          }}>Delete</Button>
+                      </>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </Card>
+        </Col>
+      </Row>
 
       {transactions.length > 0 && (
         <Row gutter={[16, 16]}>

@@ -23,7 +23,7 @@ public class CaseMasterService {
     private final InvOccuranceTimeRepository invOccuranceTimeRepository;
 
     public Page<CaseMaster> search(String district, Integer statusId, Integer crimeHeadId, String crimeNo, Pageable pageable) {
-        return caseMasterRepository.search(district, statusId, crimeHeadId, crimeNo, pageable);
+        return caseMasterRepository.search(district, statusId, crimeHeadId, crimeNo, null, null, pageable);
     }
 
     public CaseMaster getById(Integer id) {
