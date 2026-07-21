@@ -88,6 +88,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <jvmArguments>-Xmx256m -Xms128m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError</jvmArguments>
+                </configuration>
             </plugin>
         </plugins>
     </build>

@@ -17,7 +17,7 @@
 ## Step 1: Start Infrastructure (Databases)
 
 ```bash
-cd E:\crime\crime-analytics-platform
+cd D:\crime\crime-analytics-platform
 docker-compose up -d
 ```
 
@@ -30,7 +30,7 @@ This starts:
 | Elasticsearch | `localhost:9200` | Search engine |
 | Kafka | `localhost:9092` | Message broker |
 | Redis | `localhost:6379` | Session cache |
-| Keycloak | `localhost:8090` | Auth (admin/admin) |
+| Keycloak | `localhost:8081` | Auth (admin/admin) |
 | Zookeeper | `localhost:2181` | Kafka dependency |
 
 **Verify all are running:**
@@ -50,13 +50,13 @@ The SQL schema in `sql/init/01-schema.sql` runs **automatically** on first Postg
 ## Step 2: Build the Java Backend
 
 ```bash
-cd E:\crime\crime-analytics-platform
+cd D:\crime\crime-analytics-platform
 
 # On Windows, use mvnw if available, or just mvn:
 mvn clean install -DskipTests
 ```
 
-This builds all 13 microservices.
+This builds all 12 microservices (plus shared-models library).
 
 **Expected build time:** ~3-5 minutes on first run.
 
@@ -71,7 +71,26 @@ If Maven is not installed, use the wrapper:
 
 ## Step 3: Run the Microservices
 
-**Start order matters.** Run each in a separate terminal:
+**Quick way (recommended):** Use the provided startup script:
+
+```powershell
+# From the project root:
+.\run-local.ps1
+```
+
+This launches all 12 services in dependency order with optimized JVM heap settings:
+- Discovery & Gateway first (128m heap each)
+- Data services next (256m heap each: incident, person, graph, search, analytics, financial, report, etl)
+- LLM service last (512m heap: conversational-ai)
+
+Each service has fixed heap limits baked into its `pom.xml` to prevent OOM crashes when running all services simultaneously. The script also supports:
+- `-SkipBuild` — skip Maven build if already compiled
+- `-SkipInfra` — skip Docker infrastructure startup
+- `-Services` — specify a subset (e.g. `-Services discovery,gateway,incident`)
+
+### Manual start (one-by-one)
+
+Run each in a separate terminal:
 
 ```bash
 # Terminal 1: Discovery (must start first)
@@ -117,24 +136,12 @@ cd notification-service && mvn spring-boot:run
 cd etl-service && mvn spring-boot:run
 ```
 
-**Quick way to start all (PowerShell):**
-```powershell
-$services = @("discovery-service","gateway-service","incident-service","person-service",
-               "graph-service","conversational-ai-service","search-service",
-               "financial-service","analytics-service","report-service",
-               "notification-service","etl-service")
-
-foreach ($svc in $services) {
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 'E:\crime\crime-analytics-platform\$svc'; mvn spring-boot:run"
-}
-```
-
 ---
 
 ## Step 4: Run the Frontend
 
 ```bash
-cd E:\crime\crime-analytics-platform\crime-analytics-ui
+cd D:\crime\crime-analytics-platform\crime-analytics-ui
 npm install
 npm run dev
 ```
@@ -227,11 +234,27 @@ All configurable in `.env` or `application.yml`:
 | 8087 | Conversational AI |
 | 8088 | Financial Service |
 | 8089 | Report Service |
-| 8090 | Keycloak / Notification Service |
+| 8081 | Keycloak |
+| 8090 | Notification Service |
 | 8091 | ETL Service |
 | 8761 | Eureka Discovery |
 | 9092 | Kafka |
 | 9200 | Elasticsearch |
+
+---
+
+## Memory Notes
+
+All 12 microservices running simultaneously can consume ~4 GB of heap. Each service's `pom.xml` has been configured with explicit heap limits (`-Xmx`/`-Xms`) via the `spring-boot-maven-plugin`. Infrastructure (Docker) containers add another ~4 GB. Ensure your system has at least 15 GB total RAM available.
+
+### Per-service heap allocations:
+| Heap | Services |
+|------|----------|
+| 128m max / 64m init | discovery, gateway, notification |
+| 256m max / 128m init | incident, person, graph, search, analytics, financial, report, etl |
+| 512m max / 256m init | conversational-ai |
+
+If you still experience OOM, reduce the `conversational-ai-service` heap to 256m in its `pom.xml`.
 
 ---
 
