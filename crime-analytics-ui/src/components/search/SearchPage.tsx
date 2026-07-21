@@ -233,7 +233,7 @@ export const SearchPage: React.FC = () => {
 
   return (
     <div style={{ padding: 16 }}>
-      <Card style={{ marginBottom: 16 }} size="small" bodyStyle={{ padding: 16 }}>
+      <Card style={{ marginBottom: 16 }} size="small" styles={{ body: { padding: 16 } }}>
         <Row gutter={[8, 8]}>
           <Col xs={24} sm={12} md={6} lg={4}>
             <Input placeholder="Crime No" value={crimeNo} onChange={e => setCrimeNo(e.target.value)}
@@ -283,7 +283,7 @@ export const SearchPage: React.FC = () => {
 
       <Card
         size="small"
-        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 } }}
         title={<span style={{ fontSize: 13, color: '#666' }}><FilterOutlined style={{ marginRight: 6 }} />{total} case{total !== 1 ? 's' : ''} found</span>}
         extra={
           results.length > 0 ? (

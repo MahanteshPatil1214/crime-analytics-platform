@@ -253,7 +253,7 @@ export const CaseDetailPage: React.FC = () => {
           <Col span={24}>
             <Card title={<><UserOutlined /> All Involvements (Combined)</>} bordered={false}>
               <Table
-                rowKey={(_, i) => String(i)}
+                rowKey={(r) => `${r.type}-${r.name}`}
                 dataSource={involvements}
                 pagination={false}
                 size="small"
@@ -277,7 +277,7 @@ export const CaseDetailPage: React.FC = () => {
           <Col span={24}>
             <Card title={<><SafetyOutlined /> Act Sections</>} bordered={false}>
               <Table
-                rowKey={(_, i) => String(i)}
+                rowKey={(r) => `${r.actCode}-${r.sectionCode}`}
                 dataSource={actSections}
                 pagination={false}
                 size="small"
