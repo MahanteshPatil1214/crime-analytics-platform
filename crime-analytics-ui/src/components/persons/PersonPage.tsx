@@ -456,7 +456,7 @@ const PersonPage: React.FC = () => {
         }}
         confirmLoading={submitting}
         width={640}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical">
           <Row gutter={16}>

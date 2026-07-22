@@ -26,8 +26,19 @@ export const evidenceApi = {
     }).then(r => r.data);
   },
 
-  download: (caseId: number, evidenceId: number) =>
-    `${apiClient.defaults.baseURL || ''}/api/v1/cases/${caseId}/evidence/${evidenceId}/download`,
+  download: async (caseId: number, evidenceId: number, fileName?: string) => {
+    const response = await apiClient.get(`/api/v1/cases/${caseId}/evidence/${evidenceId}/download`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName || 'evidence');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 
   delete: (caseId: number, evidenceId: number) =>
     apiClient.delete(`/api/v1/cases/${caseId}/evidence/${evidenceId}`).then(r => r.data),

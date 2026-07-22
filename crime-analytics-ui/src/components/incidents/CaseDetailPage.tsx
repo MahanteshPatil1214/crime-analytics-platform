@@ -502,7 +502,11 @@ export const CaseDetailPage: React.FC = () => {
                     render: (_: any, r: Evidence) => (
                       <>
                         <Button type="link" size="small" icon={<DownloadOutlined />}
-                          href={evidenceApi.download(Number(id), r.evidenceId)} target="_blank">Download</Button>
+                          onClick={async () => {
+                            try {
+                              await evidenceApi.download(Number(id), r.evidenceId, r.originalName);
+                            } catch { message.error('Download failed'); }
+                          }}>Download</Button>
                         <Button type="link" size="small" danger
                           onClick={async () => {
                             try {
@@ -552,7 +556,6 @@ export const CaseDetailPage: React.FC = () => {
         okText="Save Changes"
         cancelText="Cancel"
         width={800}
-        destroyOnClose
       >
         <Form form={editForm} layout="vertical">
           <Row gutter={16}>
@@ -681,7 +684,6 @@ export const CaseDetailPage: React.FC = () => {
         confirmLoading={statusSaving}
         okText="Update Status"
         cancelText="Cancel"
-        destroyOnClose
       >
         <Form form={statusForm} layout="vertical">
           <Form.Item name="statusId" label="Select Status" rules={[{ required: true, message: 'Please select a status' }]}>

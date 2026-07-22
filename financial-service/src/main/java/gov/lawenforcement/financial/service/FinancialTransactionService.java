@@ -75,4 +75,31 @@ public class FinancialTransactionService {
     public java.util.List<FinancialTransaction> getByCaseId(Integer caseId) {
         return repository.findByRelatedCaseId(caseId);
     }
+
+    @Transactional
+    public FinancialTransaction updateTransaction(UUID id, FinancialTransaction updated) {
+        FinancialTransaction tx = getTransaction(id);
+        tx.setTransactionRef(updated.getTransactionRef());
+        tx.setSenderAccountId(updated.getSenderAccountId());
+        tx.setRecipientAccountId(updated.getRecipientAccountId());
+        tx.setAmount(updated.getAmount());
+        tx.setCurrency(updated.getCurrency());
+        tx.setTransactionDate(updated.getTransactionDate());
+        tx.setTransactionType(updated.getTransactionType());
+        tx.setIsFlagged(updated.getIsFlagged());
+        tx.setFlagReason(updated.getFlagReason());
+        tx.setRiskScore(updated.getRiskScore());
+        tx.setRelatedCaseId(updated.getRelatedCaseId());
+        log.info("Transaction updated: id={}", id);
+        return repository.save(tx);
+    }
+
+    @Transactional
+    public void deleteTransaction(UUID id) {
+        if (!repository.existsById(id)) {
+            throw new RuntimeException("Transaction not found: " + id);
+        }
+        repository.deleteById(id);
+        log.info("Transaction deleted: id={}", id);
+    }
 }
