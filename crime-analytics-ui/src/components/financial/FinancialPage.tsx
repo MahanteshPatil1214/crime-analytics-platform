@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Card, Statistic, Table, Tag, Input, Select, Spin, Space, Button, Typography } from 'antd';
-import { DollarOutlined, WarningOutlined, SearchOutlined, ReloadOutlined, AlertOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Statistic, Table, Tag, Input, Select, Spin, Space, Button, Typography, Modal, Form, DatePicker, Popconfirm, message } from 'antd';
+import { DollarOutlined, WarningOutlined, SearchOutlined, ReloadOutlined, AlertOutlined, CheckCircleOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { financialApi } from '../../api/financialApi';
 import { FinancialTransaction } from '../../types/financial';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
@@ -50,6 +51,10 @@ export const FinancialPage: React.FC = () => {
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const [accountFilter, setAccountFilter] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<FinancialTransaction | null>(null);
+  const [form] = Form.useForm();
+  const [saving, setSaving] = useState(false);
 
   const fetchTransactions = async (p = page) => {
     setLoading(true);
@@ -73,9 +78,13 @@ export const FinancialPage: React.FC = () => {
     }
   };
 
+  const fetchStats = () => {
+    financialApi.getStats().then(setStats).catch(() => {});
+  };
+
   useEffect(() => {
     fetchTransactions(0);
-    financialApi.getStats().then(setStats).catch(() => {});
+    fetchStats();
   }, []);
 
   useEffect(() => {
@@ -84,6 +93,75 @@ export const FinancialPage: React.FC = () => {
   }, [flaggedOnly, typeFilter]);
 
   const handleSearch = () => { setPage(0); fetchTransactions(0); };
+
+  const handleOpenCreate = () => {
+    setEditingRecord(null);
+    form.resetFields();
+    form.setFieldsValue({ currency: 'INR' });
+    setModalOpen(true);
+  };
+
+  const handleOpenEdit = (record: FinancialTransaction) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      transactionRef: record.transactionRef,
+      senderAccountId: record.senderAccountId,
+      recipientAccountId: record.recipientAccountId,
+      amount: record.amount,
+      currency: record.currency,
+      transactionDate: dayjs(record.transactionDate),
+      transactionType: record.transactionType,
+      relatedCaseId: record.relatedCaseId,
+      flagReason: record.flagReason,
+    });
+    setModalOpen(true);
+  };
+
+  const handleModalOk = async () => {
+    try {
+      const values = await form.validateFields();
+      setSaving(true);
+      const payload: Partial<FinancialTransaction> = {
+        transactionRef: values.transactionRef,
+        senderAccountId: values.senderAccountId,
+        recipientAccountId: values.recipientAccountId,
+        amount: values.amount,
+        currency: values.currency,
+        transactionDate: values.transactionDate.toISOString(),
+        transactionType: values.transactionType,
+        relatedCaseId: values.relatedCaseId ?? null,
+        flagReason: values.flagReason || null,
+      };
+      if (editingRecord) {
+        await financialApi.update(editingRecord.id, payload);
+        message.success('Transaction updated');
+      } else {
+        await financialApi.create(payload);
+        message.success('Transaction created');
+      }
+      setModalOpen(false);
+      form.resetFields();
+      fetchTransactions(page);
+      fetchStats();
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      console.error('Save failed:', err);
+      message.error('Failed to save transaction');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await financialApi.delete(id);
+      message.success('Transaction deleted');
+      fetchTransactions(page);
+      fetchStats();
+    } catch {
+      message.error('Failed to delete transaction');
+    }
+  };
 
   const typeBreakdown = transactions.reduce((acc, t) => {
     acc[t.transactionType] = (acc[t.transactionType] || 0) + 1;
@@ -167,6 +245,32 @@ export const FinancialPage: React.FC = () => {
       render: (v: boolean, r) => v
         ? <Tag color="red" style={{ borderRadius: 12, padding: '1px 8px' }} title={r.flagReason || ''}>Flagged</Tag>
         : <Tag style={{ borderRadius: 12, padding: '1px 8px' }}>Clean</Tag>,
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_: any, record: FinancialTransaction) => (
+        <Space size={4}>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEdit(record)}
+            style={{ color: '#1890ff', borderRadius: '50%' }}
+          />
+          <Popconfirm
+            title="Delete this transaction?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              style={{ color: '#ff4d4f', borderRadius: '50%' }}
+            />
+          </Popconfirm>
+        </Space>
+      ),
     },
   ];
 
@@ -264,6 +368,15 @@ export const FinancialPage: React.FC = () => {
           </Button>
           <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} style={{ borderRadius: 8 }}>Search</Button>
           <Button icon={<ReloadOutlined />} onClick={() => { setAccountFilter(''); setTypeFilter(undefined); setFlaggedOnly(false); setPage(0); fetchTransactions(0); }} style={{ borderRadius: 8 }}>Reset</Button>
+          <div style={{ flex: 1 }} />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleOpenCreate}
+            style={{ background: 'linear-gradient(135deg, #1890ff, #096dd9)', borderRadius: 8 }}
+          >
+            New Transaction
+          </Button>
         </div>
         <div style={{ padding: '0 4px' }}>
           <Table
@@ -279,10 +392,65 @@ export const FinancialPage: React.FC = () => {
               showTotal: (t) => <Text type="secondary" style={{ fontSize: 13 }}>{t} transactions</Text>,
               onChange: (p) => { setPage(p - 1); fetchTransactions(p - 1); },
             }}
-            rowHoverStyle={{ background: '#e6f7ff' }}
+            rowHoverable
           />
         </div>
       </Card>
+
+      {/* Create / Edit Modal */}
+      <Modal
+        title={editingRecord ? 'Edit Transaction' : 'New Transaction'}
+        open={modalOpen}
+        onCancel={() => { setModalOpen(false); form.resetFields(); }}
+        onOk={handleModalOk}
+        confirmLoading={saving}
+        width={700}
+        destroyOnHidden
+      >
+        <Form form={form} layout="vertical">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item name="transactionRef" label="Transaction Ref" rules={[{ required: true, message: 'Required' }]}>
+              <Input placeholder="e.g. TXN-001" />
+            </Form.Item>
+            <Form.Item name="transactionType" label="Transaction Type" rules={[{ required: true, message: 'Required' }]}>
+              <Select placeholder="Select type">
+                <Select.Option value="WIRE">Wire Transfer</Select.Option>
+                <Select.Option value="CASH_DEPOSIT">Cash Deposit</Select.Option>
+                <Select.Option value="CASH_WITHDRAWAL">Cash Withdrawal</Select.Option>
+                <Select.Option value="CHECK">Check</Select.Option>
+                <Select.Option value="CRYPTO">Crypto</Select.Option>
+                <Select.Option value="TRANSFER">Transfer</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item name="senderAccountId" label="Sender Account ID" rules={[{ required: true, message: 'Required' }]}>
+              <Input placeholder="Sender account ID" />
+            </Form.Item>
+            <Form.Item name="recipientAccountId" label="Recipient Account ID" rules={[{ required: true, message: 'Required' }]}>
+              <Input placeholder="Recipient account ID" />
+            </Form.Item>
+            <Form.Item name="amount" label="Amount" rules={[{ required: true, message: 'Required' }]}>
+              <Input type="number" placeholder="0.00" min={0} />
+            </Form.Item>
+            <Form.Item name="currency" label="Currency" initialValue="INR">
+              <Select>
+                <Select.Option value="INR">INR</Select.Option>
+                <Select.Option value="USD">USD</Select.Option>
+                <Select.Option value="EUR">EUR</Select.Option>
+                <Select.Option value="GBP">GBP</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item name="transactionDate" label="Transaction Date" rules={[{ required: true, message: 'Required' }]}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="relatedCaseId" label="Related Case ID">
+              <Input type="number" placeholder="Optional" />
+            </Form.Item>
+          </div>
+          <Form.Item name="flagReason" label="Flag Reason">
+            <Input.TextArea rows={3} placeholder="Optional — enter a reason to flag this transaction" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

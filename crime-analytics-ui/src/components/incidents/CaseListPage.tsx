@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Tag, Button, Input, Select, Space, Typography } from 'antd';
-import { SearchOutlined, ReloadOutlined, EyeOutlined, FilterOutlined } from '@ant-design/icons';
+import { Card, Table, Tag, Button, Input, Select, Space, Typography, Modal, Form, DatePicker, message, Popconfirm, Descriptions } from 'antd';
+import { SearchOutlined, ReloadOutlined, EyeOutlined, FilterOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { caseApi } from '../../api/caseApi';
 import { lookupApi } from '../../api/lookupApi';
-import { CaseSearchResult } from '../../types/case';
+import { CaseSearchResult, CaseMaster } from '../../types/case';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
@@ -29,11 +30,24 @@ export const CaseListPage: React.FC = () => {
   const [statuses, setStatuses] = useState<{ caseStatusId: number; caseStatusName: string }[]>([]);
   const [crimeHeads, setCrimeHeads] = useState<{ crimeHeadId: number; crimeGroupName: string }[]>([]);
   const [districts, setDistricts] = useState<{ districtId: number; districtName: string }[]>([]);
+  const [categories, setCategories] = useState<{ caseCategoryId: number; lookupValue: string }[]>([]);
+  const [gravityOffences, setGravityOffences] = useState<{ gravityOffenceId: number; lookupValue: string }[]>([]);
+  const [courts, setCourts] = useState<{ courtId: number; courtName: string }[]>([]);
+  const [units, setUnits] = useState<{ unitId: number; unitName: string }[]>([]);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingCase, setEditingCase] = useState<CaseSearchResult | null>(null);
+  const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     lookupApi.getStatuses().then(setStatuses).catch(() => {});
     lookupApi.getCrimeHeads().then(setCrimeHeads).catch(() => {});
     lookupApi.getDistricts().then(setDistricts).catch(() => {});
+    lookupApi.getCategories().then(setCategories).catch(() => {});
+    lookupApi.getGravityOffences().then(setGravityOffences).catch(() => {});
+    lookupApi.getCourts().then(setCourts).catch(() => {});
+    lookupApi.getUnits().then(setUnits).catch(() => {});
   }, []);
 
   const fetchCases = async (p = page) => {
@@ -55,6 +69,90 @@ export const CaseListPage: React.FC = () => {
   };
 
   useEffect(() => { fetchCases(0); }, []);
+
+  const openCreateModal = () => {
+    setEditingCase(null);
+    form.resetFields();
+    setModalOpen(true);
+  };
+
+  const openEditModal = async (record: CaseSearchResult) => {
+    try {
+      const detail = await caseApi.getById(record.caseMasterId);
+      const c = detail.case;
+      form.setFieldsValue({
+        crimeNo: c.crimeNo,
+        caseNo: c.caseNo,
+        crimeRegisteredDate: c.crimeRegisteredDate ? dayjs(c.crimeRegisteredDate) : null,
+        policeStationId: c.policeStationId,
+        caseCategoryId: c.caseCategoryId,
+        gravityOffenceId: c.gravityOffenceId,
+        crimeMajorHeadId: c.crimeMajorHeadId,
+        crimeMinorHeadId: c.crimeMinorHeadId,
+        caseStatusId: c.caseStatusId,
+        courtId: c.courtId,
+        incidentFromDate: c.incidentFromDate ? dayjs(c.incidentFromDate) : null,
+        incidentToDate: c.incidentToDate ? dayjs(c.incidentToDate) : null,
+        briefFacts: c.briefFacts,
+        latitude: c.latitude,
+        longitude: c.longitude,
+      });
+      setEditingCase(record);
+      setModalOpen(true);
+    } catch {
+      message.error('Failed to load case details');
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+      const payload: Partial<CaseMaster> = {
+        crimeNo: values.crimeNo,
+        caseNo: values.caseNo,
+        crimeRegisteredDate: values.crimeRegisteredDate?.format('YYYY-MM-DD'),
+        policeStationId: values.policeStationId || null,
+        caseCategoryId: values.caseCategoryId || null,
+        gravityOffenceId: values.gravityOffenceId || null,
+        crimeMajorHeadId: values.crimeMajorHeadId || null,
+        crimeMinorHeadId: values.crimeMinorHeadId || null,
+        caseStatusId: values.caseStatusId || null,
+        courtId: values.courtId || null,
+        incidentFromDate: values.incidentFromDate?.format('YYYY-MM-DD') || null,
+        incidentToDate: values.incidentToDate?.format('YYYY-MM-DD') || null,
+        briefFacts: values.briefFacts || null,
+        latitude: values.latitude || null,
+        longitude: values.longitude || null,
+      };
+
+      if (editingCase) {
+        await caseApi.update(editingCase.caseMasterId, payload);
+        message.success('Case updated successfully');
+      } else {
+        await caseApi.create(payload);
+        message.success('Case created successfully');
+      }
+      setModalOpen(false);
+      form.resetFields();
+      fetchCases(page);
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      message.error(editingCase ? 'Failed to update case' : 'Failed to create case');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await caseApi.delete(id);
+      message.success('Case deleted');
+      fetchCases(page);
+    } catch {
+      message.error('Failed to delete case');
+    }
+  };
 
   const columns: ColumnsType<CaseSearchResult> = [
     {
@@ -96,18 +194,42 @@ export const CaseListPage: React.FC = () => {
     },
     { title: 'District', dataIndex: 'districtName', render: (v: string) => v || '—' },
     {
-      title: '',
-      key: 'view',
-      width: 60,
+      title: 'Actions',
+      key: 'actions',
+      width: 120,
       render: (_, r) => (
-        <Button
-          type="primary"
-          shape="circle"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => navigate(`/incidents/${r.caseMasterId}`)}
-          style={{ boxShadow: '0 2px 6px rgba(24,144,255,0.3)' }}
-        />
+        <Space size={4}>
+          <Button
+            type="primary"
+            shape="circle"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/incidents/${r.caseMasterId}`)}
+            style={{ boxShadow: '0 2px 6px rgba(24,144,255,0.3)' }}
+          />
+          <Button
+            shape="circle"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => openEditModal(r)}
+            style={{ color: '#faad14', borderColor: '#faad14' }}
+          />
+          <Popconfirm
+            title="Delete this case?"
+            description="This action cannot be undone."
+            onConfirm={() => handleDelete(r.caseMasterId)}
+            okText="Delete"
+            cancelText="Cancel"
+            okButtonProps={{ danger: true }}
+          >
+            <Button
+              shape="circle"
+              size="small"
+              icon={<DeleteOutlined />}
+              danger
+            />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -181,6 +303,10 @@ export const CaseListPage: React.FC = () => {
           }} style={{ borderRadius: 8 }}>
             Reset
           </Button>
+          <div style={{ flex: 1 }} />
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal} style={{ borderRadius: 8, background: 'linear-gradient(135deg, #1890ff, #096dd9)', boxShadow: '0 2px 8px rgba(24,144,255,0.3)' }}>
+            New Case
+          </Button>
         </div>
 
         {/* Table */}
@@ -198,10 +324,96 @@ export const CaseListPage: React.FC = () => {
               showTotal: (t) => <Text type="secondary" style={{ fontSize: 13 }}>{t} cases found</Text>,
               onChange: (p) => { setPage(p - 1); fetchCases(p - 1); },
             }}
-            rowHoverStyle={{ background: '#e6f7ff' }}
+            rowHoverable
           />
         </div>
       </Card>
+
+      {/* Create / Edit Modal */}
+      <Modal
+        title={editingCase ? `Edit Case — ${editingCase.crimeNo}` : 'Create New Case'}
+        open={modalOpen}
+        onCancel={() => { setModalOpen(false); form.resetFields(); }}
+        onOk={handleSubmit}
+        confirmLoading={submitting}
+        okText={editingCase ? 'Update' : 'Create'}
+        width={800}
+        destroyOnClose
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item name="crimeNo" label="Crime No" rules={[{ required: true, message: 'Required' }]}>
+              <Input placeholder="e.g. 001/2026" />
+            </Form.Item>
+            <Form.Item name="caseNo" label="Case No">
+              <Input placeholder="Case Number" />
+            </Form.Item>
+            <Form.Item name="crimeRegisteredDate" label="Registration Date">
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="caseStatusId" label="Status">
+              <Select placeholder="Select Status" allowClear>
+                {statuses.map((s) => (
+                  <Select.Option key={s.caseStatusId} value={s.caseStatusId}>{s.caseStatusName}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="policeStationId" label="Police Station">
+              <Select placeholder="Select Station" allowClear showSearch optionFilterProp="label">
+                {units.map((u) => (
+                  <Select.Option key={u.unitId} value={u.unitId} label={u.unitName}>{u.unitName}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="caseCategoryId" label="Category">
+              <Select placeholder="Select Category" allowClear showSearch optionFilterProp="label">
+                {categories.map((c) => (
+                  <Select.Option key={c.caseCategoryId} value={c.caseCategoryId} label={c.lookupValue}>{c.lookupValue}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="crimeMajorHeadId" label="Crime Head">
+              <Select placeholder="Select Crime Head" allowClear showSearch optionFilterProp="label">
+                {crimeHeads.map((h) => (
+                  <Select.Option key={h.crimeHeadId} value={h.crimeHeadId} label={h.crimeGroupName}>{h.crimeGroupName}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="gravityOffenceId" label="Gravity of Offence">
+              <Select placeholder="Select Gravity" allowClear showSearch optionFilterProp="label">
+                {gravityOffences.map((g) => (
+                  <Select.Option key={g.gravityOffenceId} value={g.gravityOffenceId} label={g.lookupValue}>{g.lookupValue}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="courtId" label="Court">
+              <Select placeholder="Select Court" allowClear showSearch optionFilterProp="label">
+                {courts.map((c) => (
+                  <Select.Option key={c.courtId} value={c.courtId} label={c.courtName}>{c.courtName}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="crimeMinorHeadId" label="Crime Minor Head">
+              <Input placeholder="Minor Head ID" type="number" />
+            </Form.Item>
+            <Form.Item name="incidentFromDate" label="Incident From">
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="incidentToDate" label="Incident To">
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="latitude" label="Latitude">
+              <Input placeholder="Latitude" type="number" />
+            </Form.Item>
+            <Form.Item name="longitude" label="Longitude">
+              <Input placeholder="Longitude" type="number" />
+            </Form.Item>
+          </div>
+          <Form.Item name="briefFacts" label="Brief Facts" style={{ gridColumn: '1 / -1' }}>
+            <Input.TextArea rows={3} placeholder="Brief description of the case" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

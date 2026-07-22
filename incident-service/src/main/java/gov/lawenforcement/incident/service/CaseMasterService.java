@@ -133,4 +133,41 @@ public class CaseMasterService {
         }
         return results;
     }
+
+    public CaseMaster createCase(CaseMaster caseMaster) {
+        return caseMasterRepository.save(caseMaster);
+    }
+
+    public CaseMaster updateCase(Integer id, CaseMaster updates) {
+        CaseMaster existing = getById(id);
+        existing.setCrimeNo(updates.getCrimeNo());
+        existing.setCaseNo(updates.getCaseNo());
+        existing.setCrimeRegisteredDate(updates.getCrimeRegisteredDate());
+        existing.setPolicePersonId(updates.getPolicePersonId());
+        existing.setPoliceStationId(updates.getPoliceStationId());
+        existing.setCaseCategoryId(updates.getCaseCategoryId());
+        existing.setGravityOffenceId(updates.getGravityOffenceId());
+        existing.setCrimeMajorHeadId(updates.getCrimeMajorHeadId());
+        existing.setCrimeMinorHeadId(updates.getCrimeMinorHeadId());
+        existing.setCaseStatusId(updates.getCaseStatusId());
+        existing.setCourtId(updates.getCourtId());
+        existing.setIncidentFromDate(updates.getIncidentFromDate());
+        existing.setIncidentToDate(updates.getIncidentToDate());
+        existing.setInfoReceivedPsDate(updates.getInfoReceivedPsDate());
+        existing.setLatitude(updates.getLatitude());
+        existing.setLongitude(updates.getLongitude());
+        existing.setBriefFacts(updates.getBriefFacts());
+        return caseMasterRepository.save(existing);
+    }
+
+    public CaseMaster updateCaseStatus(Integer id, Integer statusId) {
+        CaseMaster existing = getById(id);
+        existing.setCaseStatusId(statusId);
+        return caseMasterRepository.save(existing);
+    }
+
+    public void deleteCase(Integer id) {
+        CaseMaster existing = getById(id);
+        caseMasterRepository.delete(existing);
+    }
 }

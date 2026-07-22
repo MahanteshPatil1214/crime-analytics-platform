@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Card, Table, Tag, Descriptions, Spin, Empty, Statistic, Button, message } from 'antd';
-import { ArrowLeftOutlined, UserOutlined, DollarOutlined, WarningOutlined, SafetyOutlined, FilePdfOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Table, Tag, Descriptions, Spin, Empty, Statistic, Button, message, Modal, Popconfirm, Form, Input, Select, DatePicker } from 'antd';
+import { ArrowLeftOutlined, UserOutlined, DollarOutlined, WarningOutlined, SafetyOutlined, FilePdfOutlined, DownloadOutlined, UploadOutlined, EditOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { caseApi } from '../../api/caseApi';
-import { lookupApi, Unit, Court as CourtType, CaseCategory, CrimeHead, Employee, GravityOffence } from '../../api/lookupApi';
+import { lookupApi, Unit, Court as CourtType, CaseCategory, CrimeHead, Employee, GravityOffence, CaseStatus } from '../../api/lookupApi';
 import { evidenceApi, Evidence } from '../../api/evidenceApi';
 import { financialApi } from '../../api/financialApi';
 import { reportApi } from '../../api/reportApi';
 import { CaseDetail, Involvement, ActSection, Arrest } from '../../types/case';
 import { FinancialTransaction } from '../../types/financial';
+import dayjs from 'dayjs';
 
 const INVOLVEMENT_COLORS: Record<string, string> = {
   COMPLAINANT: '#1890ff',
@@ -35,31 +36,50 @@ export const CaseDetailPage: React.FC = () => {
   const [employeeMap, setEmployeeMap] = useState<Record<number, string>>({});
   const [gravityMap, setGravityMap] = useState<Record<number, string>>({});
 
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [editForm] = Form.useForm();
+  const [statusForm] = Form.useForm();
+
+  const [statuses, setStatuses] = useState<CaseStatus[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [courts, setCourts] = useState<CourtType[]>([]);
+  const [categories, setCategories] = useState<CaseCategory[]>([]);
+  const [crimeHeads, setCrimeHeads] = useState<CrimeHead[]>([]);
+  const [gravityOffences, setGravityOffences] = useState<GravityOffence[]>([]);
+
   const GENDER_MAP: Record<number, string> = { 1: 'Male', 2: 'Female', 3: 'Transgender' };
 
-  useEffect(() => {
+  const loadLookups = () => {
     Promise.all([
       lookupApi.getStatuses().then((sts) => {
+        setStatuses(sts);
         const m: Record<number, string> = {};
         sts.forEach((s) => { m[s.caseStatusId] = s.caseStatusName; });
         setStatusMap(m);
       }).catch(() => {}),
       lookupApi.getUnits().then((us) => {
+        setUnits(us);
         const m: Record<number, string> = {};
         us.forEach((u) => { m[u.unitId] = u.unitName; });
         setUnitMap(m);
       }).catch(() => {}),
       lookupApi.getCourts().then((cs) => {
+        setCourts(cs);
         const m: Record<number, string> = {};
         cs.forEach((c) => { m[c.courtId] = c.courtName; });
         setCourtMap(m);
       }).catch(() => {}),
       lookupApi.getCategories().then((cs) => {
+        setCategories(cs);
         const m: Record<number, string> = {};
         cs.forEach((c) => { m[c.caseCategoryId] = c.lookupValue; });
         setCategoryMap(m);
       }).catch(() => {}),
       lookupApi.getCrimeHeads().then((ch) => {
+        setCrimeHeads(ch);
         const m: Record<number, string> = {};
         ch.forEach((c) => { m[c.crimeHeadId] = c.crimeGroupName; });
         setCrimeHeadMap(m);
@@ -70,11 +90,35 @@ export const CaseDetailPage: React.FC = () => {
         setEmployeeMap(m);
       }).catch(() => {}),
       lookupApi.getGravityOffences().then((gs) => {
+        setGravityOffences(gs);
         const m: Record<number, string> = {};
         gs.forEach((g) => { m[g.gravityOffenceId] = g.lookupValue; });
         setGravityMap(m);
       }).catch(() => {}),
     ]);
+  };
+
+  const reloadCase = async () => {
+    if (!id) return;
+    const caseId = Number(id);
+    try {
+      const [det, invs, txns, evs] = await Promise.all([
+        caseApi.getById(caseId),
+        caseApi.getInvolvements(caseId).catch(() => []),
+        financialApi.getByCase(caseId).catch(() => []),
+        evidenceApi.list(caseId).catch(() => []),
+      ]);
+      setDetail(det);
+      setInvolvements(Array.isArray(invs) ? invs : []);
+      setTransactions(Array.isArray(txns) ? txns : []);
+      setEvidenceList(Array.isArray(evs) ? evs : []);
+    } catch (err) {
+      console.error('Failed to reload case:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadLookups();
   }, []);
 
   useEffect(() => {
@@ -100,6 +144,92 @@ export const CaseDetailPage: React.FC = () => {
     };
     load();
   }, [id]);
+
+  const openEditModal = () => {
+    if (!detail) return;
+    const { case: c } = detail;
+    editForm.setFieldsValue({
+      crimeNo: c.crimeNo,
+      caseNo: c.caseNo,
+      crimeRegisteredDate: c.crimeRegisteredDate ? dayjs(c.crimeRegisteredDate) : null,
+      policeStationId: c.policeStationId,
+      caseCategoryId: c.caseCategoryId,
+      gravityOffenceId: c.gravityOffenceId,
+      crimeMajorHeadId: c.crimeMajorHeadId,
+      crimeMinorHeadId: c.crimeMinorHeadId,
+      caseStatusId: c.caseStatusId,
+      courtId: c.courtId,
+      incidentFromDate: c.incidentFromDate ? dayjs(c.incidentFromDate) : null,
+      incidentToDate: c.incidentToDate ? dayjs(c.incidentToDate) : null,
+      briefFacts: c.briefFacts,
+      latitude: c.latitude,
+      longitude: c.longitude,
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!detail) return;
+    try {
+      const values = await editForm.validateFields();
+      setEditSaving(true);
+      const payload: Record<string, any> = { ...values };
+      if (payload.crimeRegisteredDate) {
+        payload.crimeRegisteredDate = payload.crimeRegisteredDate.format('YYYY-MM-DD');
+      }
+      if (payload.incidentFromDate) {
+        payload.incidentFromDate = payload.incidentFromDate.format('YYYY-MM-DD');
+      }
+      if (payload.incidentToDate) {
+        payload.incidentToDate = payload.incidentToDate.format('YYYY-MM-DD');
+      }
+      await caseApi.update(detail.case.caseMasterId, payload);
+      message.success('Case updated successfully');
+      setEditModalOpen(false);
+      await reloadCase();
+    } catch (err: any) {
+      if (err.errorFields) return;
+      console.error('Failed to update case:', err);
+      message.error('Failed to update case');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const openStatusModal = () => {
+    if (!detail) return;
+    statusForm.setFieldsValue({ statusId: detail.case.caseStatusId });
+    setStatusModalOpen(true);
+  };
+
+  const handleStatusSubmit = async () => {
+    if (!detail) return;
+    try {
+      const values = await statusForm.validateFields();
+      setStatusSaving(true);
+      await caseApi.updateStatus(detail.case.caseMasterId, values.statusId);
+      message.success('Status updated successfully');
+      setStatusModalOpen(false);
+      await reloadCase();
+    } catch (err: any) {
+      if (err.errorFields) return;
+      console.error('Failed to update status:', err);
+      message.error('Failed to update status');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!detail) return;
+    try {
+      await caseApi.delete(detail.case.caseMasterId);
+      message.success('Case deleted');
+      navigate('/incidents');
+    } catch {
+      message.error('Failed to delete case');
+    }
+  };
 
   if (loading) return <div style={{ padding: 24 }}><Spin size="large" /></div>;
   if (!detail) return <div style={{ padding: 24 }}><Empty description="Case not found" /></div>;
@@ -130,7 +260,7 @@ export const CaseDetailPage: React.FC = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>Back</Button>
         <Button
           type="primary"
@@ -141,9 +271,27 @@ export const CaseDetailPage: React.FC = () => {
         >
           Download FIR Report
         </Button>
+        <Button icon={<EditOutlined />} onClick={openEditModal}>
+          Edit Case
+        </Button>
+        <Button icon={<SwapOutlined />} onClick={openStatusModal}>
+          Update Status
+        </Button>
+        <Popconfirm
+          title="Delete this case?"
+          description="This action cannot be undone. Are you sure you want to delete this case?"
+          onConfirm={handleDelete}
+          okText="Yes, Delete"
+          cancelText="Cancel"
+          okButtonProps={{ danger: true }}
+        >
+          <Button icon={<DeleteOutlined />} danger>
+            Delete Case
+          </Button>
+        </Popconfirm>
       </div>
 
-      <Card bordered={false} style={{ marginBottom: 16 }}>
+      <Card variant="borderless" style={{ marginBottom: 16, borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
         <Descriptions bordered column={2} title={`Crime No: ${c.crimeNo}`}>
           <Descriptions.Item label="Case No">{c.caseNo || '—'}</Descriptions.Item>
           <Descriptions.Item label="Status">
@@ -166,22 +314,22 @@ export const CaseDetailPage: React.FC = () => {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col span={6}>
-          <Card bordered={false}>
+          <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
             <Statistic title="Total Persons" value={totalPersons} prefix={<UserOutlined />} valueStyle={{ color: '#1890ff' }} />
           </Card>
         </Col>
         <Col span={6}>
-          <Card bordered={false}>
+          <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
             <Statistic title="Accused" value={accusedCount} prefix={<WarningOutlined />} valueStyle={{ color: '#ff4d4f' }} />
           </Card>
         </Col>
         <Col span={6}>
-          <Card bordered={false}>
+          <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
             <Statistic title="Financial Transactions" value={transactions.length} prefix={<DollarOutlined />} valueStyle={{ color: '#722ed1' }} />
           </Card>
         </Col>
         <Col span={6}>
-          <Card bordered={false}>
+          <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
             <Statistic title="Act Sections" value={actSections.length} prefix={<SafetyOutlined />} valueStyle={{ color: '#52c41a' }} />
           </Card>
         </Col>
@@ -190,7 +338,7 @@ export const CaseDetailPage: React.FC = () => {
       {detail.complainants && detail.complainants.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col span={24}>
-            <Card title={<><UserOutlined /> Complainants</>} bordered={false}>
+            <Card title={<><UserOutlined /> Complainants</>} variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
               <Table
                 rowKey="complainantId"
                 dataSource={detail.complainants}
@@ -210,7 +358,7 @@ export const CaseDetailPage: React.FC = () => {
       {detail.victims && detail.victims.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col span={24}>
-            <Card title="Victims" bordered={false}>
+            <Card title="Victims" variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
               <Table
                 rowKey="victimMasterId"
                 dataSource={detail.victims}
@@ -230,7 +378,7 @@ export const CaseDetailPage: React.FC = () => {
       {detail.accused && detail.accused.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col span={24}>
-            <Card title={<><WarningOutlined /> Accused</>} bordered={false}>
+            <Card title={<><WarningOutlined /> Accused</>} variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
               <Table
                 rowKey="accusedMasterId"
                 dataSource={detail.accused}
@@ -251,7 +399,7 @@ export const CaseDetailPage: React.FC = () => {
       {involvements.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col span={24}>
-            <Card title={<><UserOutlined /> All Involvements (Combined)</>} bordered={false}>
+            <Card title={<><UserOutlined /> All Involvements (Combined)</>} variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
               <Table
                 rowKey={(r) => `${r.type}-${r.name}`}
                 dataSource={involvements}
@@ -275,7 +423,7 @@ export const CaseDetailPage: React.FC = () => {
       {actSections.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col span={24}>
-            <Card title={<><SafetyOutlined /> Act Sections</>} bordered={false}>
+            <Card title={<><SafetyOutlined /> Act Sections</>} variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
               <Table
                 rowKey={(r) => `${r.actCode}-${r.sectionCode}`}
                 dataSource={actSections}
@@ -294,7 +442,7 @@ export const CaseDetailPage: React.FC = () => {
       {arrests.length > 0 && (
         <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
           <Col span={24}>
-            <Card title="Arrests" bordered={false}>
+            <Card title="Arrests" variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
               <Table
                 rowKey="arrestSurrenderId"
                 dataSource={arrests}
@@ -313,7 +461,7 @@ export const CaseDetailPage: React.FC = () => {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col span={24}>
-          <Card title="Evidence" bordered={false}
+          <Card title="Evidence" variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}
             extra={
               <label style={{ cursor: 'pointer', color: '#1890ff', fontSize: 13 }}>
                 <input type="file" hidden onChange={async (e) => {
@@ -376,7 +524,7 @@ export const CaseDetailPage: React.FC = () => {
       {transactions.length > 0 && (
         <Row gutter={[16, 16]}>
           <Col span={24}>
-            <Card title={<><DollarOutlined /> Financial Transactions</>} bordered={false}>
+            <Card title={<><DollarOutlined /> Financial Transactions</>} variant="borderless" style={{ borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
               <Table
                 rowKey="id"
                 dataSource={transactions}
@@ -394,6 +542,157 @@ export const CaseDetailPage: React.FC = () => {
           </Col>
         </Row>
       )}
+
+      <Modal
+        title="Edit Case"
+        open={editModalOpen}
+        onCancel={() => setEditModalOpen(false)}
+        onOk={handleEditSubmit}
+        confirmLoading={editSaving}
+        okText="Save Changes"
+        cancelText="Cancel"
+        width={800}
+        destroyOnClose
+      >
+        <Form form={editForm} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="crimeNo" label="Crime No">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="caseNo" label="Case No">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="crimeRegisteredDate" label="Crime Registered Date">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="policeStationId" label="Police Station">
+                <Select allowClear placeholder="Select station">
+                  {units.map((u) => (
+                    <Select.Option key={u.unitId} value={u.unitId}>{u.unitName}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="caseCategoryId" label="Case Category">
+                <Select allowClear placeholder="Select category">
+                  {categories.map((cat) => (
+                    <Select.Option key={cat.caseCategoryId} value={cat.caseCategoryId}>{cat.lookupValue}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="gravityOffenceId" label="Gravity Offence">
+                <Select allowClear placeholder="Select gravity">
+                  {gravityOffences.map((g) => (
+                    <Select.Option key={g.gravityOffenceId} value={g.gravityOffenceId}>{g.lookupValue}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="crimeMajorHeadId" label="Crime Major Head">
+                <Select allowClear placeholder="Select major head">
+                  {crimeHeads.map((ch) => (
+                    <Select.Option key={ch.crimeHeadId} value={ch.crimeHeadId}>{ch.crimeGroupName}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="crimeMinorHeadId" label="Crime Minor Head">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="caseStatusId" label="Status">
+                <Select allowClear placeholder="Select status">
+                  {statuses.map((s) => (
+                    <Select.Option key={s.caseStatusId} value={s.caseStatusId}>{s.caseStatusName}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="courtId" label="Court">
+                <Select allowClear placeholder="Select court">
+                  {courts.map((ct) => (
+                    <Select.Option key={ct.courtId} value={ct.courtId}>{ct.courtName}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="incidentFromDate" label="Incident From Date">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="incidentToDate" label="Incident To Date">
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="latitude" label="Latitude">
+                <Input type="number" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="longitude" label="Longitude">
+                <Input type="number" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item name="briefFacts" label="Brief Facts">
+                <Input.TextArea rows={4} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Update Case Status"
+        open={statusModalOpen}
+        onCancel={() => setStatusModalOpen(false)}
+        onOk={handleStatusSubmit}
+        confirmLoading={statusSaving}
+        okText="Update Status"
+        cancelText="Cancel"
+        destroyOnClose
+      >
+        <Form form={statusForm} layout="vertical">
+          <Form.Item name="statusId" label="Select Status" rules={[{ required: true, message: 'Please select a status' }]}>
+            <Select placeholder="Choose a status">
+              {statuses.map((s) => (
+                <Select.Option key={s.caseStatusId} value={s.caseStatusId}>{s.caseStatusName}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

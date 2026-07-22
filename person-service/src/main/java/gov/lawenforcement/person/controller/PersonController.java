@@ -59,4 +59,11 @@ public class PersonController {
     public ResponseEntity<Person> updatePerson(@PathVariable UUID id, @RequestBody Person person) {
         return ResponseEntity.ok(personService.updatePerson(id, person));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    public ResponseEntity<Void> deletePerson(@PathVariable UUID id) {
+        personService.deletePerson(id);
+        return ResponseEntity.noContent().build();
+    }
 }

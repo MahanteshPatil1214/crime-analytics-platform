@@ -1,6 +1,7 @@
 package gov.lawenforcement.incident.controller;
 
 import gov.lawenforcement.incident.dto.CaseSearchResult;
+import gov.lawenforcement.incident.entity.CaseMaster;
 import gov.lawenforcement.incident.service.CaseMasterService;
 import gov.lawenforcement.incident.service.CaseSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -70,5 +73,39 @@ public class CaseMasterController {
     @Operation(summary = "Get crime head stats", description = "Case counts grouped by crime major head")
     public ResponseEntity<List<Map<String, Object>>> getCrimeHeadStats() {
         return ResponseEntity.ok(caseMasterService.getCrimeHeadStats());
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    @Operation(summary = "Create a new case", description = "Register a new FIR case")
+    public ResponseEntity<CaseMaster> createCase(@RequestBody CaseMaster caseMaster) {
+        CaseMaster created = caseMasterService.createCase(caseMaster);
+        return ResponseEntity.created(URI.create("/api/v1/cases/" + created.getCaseMasterId())).body(created);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    @Operation(summary = "Update a case", description = "Update case details or status")
+    public ResponseEntity<CaseMaster> updateCase(
+            @PathVariable Integer id,
+            @RequestBody CaseMaster caseMaster) {
+        return ResponseEntity.ok(caseMasterService.updateCase(id, caseMaster));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    @Operation(summary = "Update case status", description = "Change the status of a case")
+    public ResponseEntity<CaseMaster> updateCaseStatus(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Integer> body) {
+        return ResponseEntity.ok(caseMasterService.updateCaseStatus(id, body.get("statusId")));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a case", description = "Permanently delete a case record")
+    public ResponseEntity<Void> deleteCase(@PathVariable Integer id) {
+        caseMasterService.deleteCase(id);
+        return ResponseEntity.noContent().build();
     }
 }

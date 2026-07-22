@@ -74,4 +74,11 @@ public class PersonService {
         existing.setRiskScore(updates.getRiskScore());
         return personRepository.save(existing);
     }
+
+    @Transactional
+    public void deletePerson(UUID id) {
+        Person existing = getPerson(id);
+        personRepository.delete(existing);
+        log.info("Person deleted: id={}", id);
+    }
 }

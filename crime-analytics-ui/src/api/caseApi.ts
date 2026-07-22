@@ -21,4 +21,16 @@ export const caseApi = {
 
   getCrimeHeadStats: () =>
     apiClient.get<{ crimeHeadId: number; count: number }[]>('/api/v1/cases/stats/crime-heads').then((r) => r.data),
+
+  create: (caseData: Partial<CaseMaster>) =>
+    apiClient.post<CaseMaster>('/api/v1/cases', caseData).then((r) => r.data),
+
+  update: (id: number, caseData: Partial<CaseMaster>) =>
+    apiClient.put<CaseMaster>(`/api/v1/cases/${id}`, caseData).then((r) => r.data),
+
+  updateStatus: (id: number, statusId: number) =>
+    apiClient.patch<CaseMaster>(`/api/v1/cases/${id}/status`, { statusId }).then((r) => r.data),
+
+  delete: (id: number) =>
+    apiClient.delete(`/api/v1/cases/${id}`).then((r) => r.data),
 };

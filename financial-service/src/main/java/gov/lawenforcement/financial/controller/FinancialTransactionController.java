@@ -64,4 +64,19 @@ public class FinancialTransactionController {
             @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(service.flagTransaction(id, body.get("reason")));
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    public ResponseEntity<FinancialTransaction> updateTransaction(
+            @PathVariable UUID id,
+            @RequestBody FinancialTransaction transaction) {
+        return ResponseEntity.ok(service.updateTransaction(id, transaction));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    public ResponseEntity<Void> deleteTransaction(@PathVariable UUID id) {
+        service.deleteTransaction(id);
+        return ResponseEntity.noContent().build();
+    }
 }
