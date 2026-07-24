@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import gov.lawenforcement.search.document.CaseDocument;
 import gov.lawenforcement.search.document.FinancialDocument;
 import gov.lawenforcement.search.document.PersonDocument;
+import gov.lawenforcement.search.dto.AutocompleteItem;
 import gov.lawenforcement.search.repository.CaseSearchRepository;
 import gov.lawenforcement.search.repository.FinancialSearchRepository;
 import gov.lawenforcement.search.repository.PersonSearchRepository;
@@ -111,7 +112,7 @@ public class SearchService {
         return result;
     }
 
-    public List<Map<String, String>> autocomplete(String prefix) {
+    public List<AutocompleteItem> autocomplete(String prefix) {
         if (prefix == null || prefix.isBlank()) return List.of();
 
         Query q = NativeQuery.builder().withQuery(nq -> nq.bool(b -> b
@@ -121,11 +122,11 @@ public class SearchService {
         SearchHits<PersonDocument> hits = esOps.search(q, PersonDocument.class);
         return hits.getSearchHits().stream().map(h -> {
             PersonDocument p = h.getContent();
-            Map<String, String> item = new LinkedHashMap<>();
-            item.put("text", p.getName());
-            item.put("type", p.getPersonType());
-            item.put("id", p.getId());
-            return item;
+            return AutocompleteItem.builder()
+                    .text(p.getName())
+                    .type(p.getPersonType())
+                    .id(p.getId())
+                    .build();
         }).collect(Collectors.toList());
     }
 }

@@ -1,5 +1,6 @@
 package gov.lawenforcement.report.service;
 
+import gov.lawenforcement.common.exception.BusinessException;
 import com.lowagie.text.BadElementException;
 import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
@@ -99,7 +100,7 @@ public class ReportService {
             return pdfBytes;
         } catch (Exception e) {
             log.error("Failed to generate FIR report for caseId={}", caseId, e);
-            throw new RuntimeException("PDF generation failed: " + e.getMessage(), e);
+            throw new BusinessException("PDF_GENERATION_FAILED", "PDF generation failed: " + e.getMessage(), e);
         }
     }
 
@@ -730,7 +731,7 @@ public class ReportService {
             document.close();
             return baos.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("PDF generation failed: " + e.getMessage(), e);
+            throw new BusinessException("PDF_GENERATION_FAILED", "PDF generation failed: " + e.getMessage(), e);
         }
     }
 
@@ -787,7 +788,7 @@ public class ReportService {
             document.close();
             return baos.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("PDF generation failed: " + e.getMessage(), e);
+            throw new BusinessException("PDF_GENERATION_FAILED", "PDF generation failed: " + e.getMessage(), e);
         }
     }
 
@@ -803,7 +804,7 @@ public class ReportService {
                 this.baseFont = BaseFont.createFont(BaseFont.COURIER, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
                 this.boldFont = BaseFont.createFont(BaseFont.COURIER_BOLD, BaseFont.WINANSI, BaseFont.NOT_EMBEDDED);
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new BusinessException("FONT_INIT_FAILED", "Failed to initialize PDF fonts", e);
             }
         }
 

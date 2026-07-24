@@ -1,5 +1,6 @@
 package gov.lawenforcement.graph.service;
 
+import gov.lawenforcement.common.audit.Auditable;
 import lombok.extern.slf4j.Slf4j;
 import org.neo4j.driver.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,6 +21,7 @@ public class GraphPopulatorService {
         this.neo4jDriver = neo4jDriver;
     }
 
+    @Auditable(action = "POPULATE", entityType = "GRAPH", description = "Full graph population from PostgreSQL to Neo4j")
     public void populateAll() {
         log.info("Starting full graph population from PostgreSQL...");
         long start = System.currentTimeMillis();

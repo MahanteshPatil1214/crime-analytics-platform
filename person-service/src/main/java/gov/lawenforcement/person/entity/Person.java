@@ -1,6 +1,8 @@
 package gov.lawenforcement.person.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -20,9 +22,11 @@ public class Person {
     private String biometricId;
 
     @Column(name = "first_name", nullable = false, length = 100)
+    @NotBlank(message = "First name is required")
     private String firstName;
 
     @Column(name = "last_name", nullable = false, length = 100)
+    @NotBlank(message = "Last name is required")
     private String lastName;
 
     @Column(name = "date_of_birth")
@@ -42,6 +46,7 @@ public class Person {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "person_type", nullable = false)
+    @NotNull(message = "Person type is required")
     private PersonType personType;
 
     @Column(name = "conviction_count", nullable = false)

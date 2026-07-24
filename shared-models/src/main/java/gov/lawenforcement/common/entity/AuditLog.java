@@ -76,6 +76,10 @@ public class AuditLog {
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
     public String getRequestUri() { return requestUri; }
     public void setRequestUri(String requestUri) { this.requestUri = requestUri; }
+    public String getOldValueHash() { return oldValueHash; }
+    public void setOldValueHash(String oldValueHash) { this.oldValueHash = oldValueHash; }
+    public String getNewValueHash() { return newValueHash; }
+    public void setNewValueHash(String newValueHash) { this.newValueHash = newValueHash; }
     public String getTamperSeal() { return tamperSeal; }
     public void setTamperSeal(String tamperSeal) { this.tamperSeal = tamperSeal; }
     public Instant getActionTimestamp() { return actionTimestamp; }

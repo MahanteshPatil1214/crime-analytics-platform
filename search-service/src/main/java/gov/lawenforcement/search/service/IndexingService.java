@@ -1,8 +1,10 @@
 package gov.lawenforcement.search.service;
 
+import gov.lawenforcement.common.audit.Auditable;
 import gov.lawenforcement.search.document.CaseDocument;
 import gov.lawenforcement.search.document.FinancialDocument;
 import gov.lawenforcement.search.document.PersonDocument;
+import gov.lawenforcement.search.dto.IndexResultResponse;
 import gov.lawenforcement.search.repository.CaseSearchRepository;
 import gov.lawenforcement.search.repository.FinancialSearchRepository;
 import gov.lawenforcement.search.repository.PersonSearchRepository;
@@ -25,15 +27,16 @@ public class IndexingService {
     private final PersonSearchRepository personRepo;
     private final FinancialSearchRepository financialRepo;
 
-    public Map<String, Object> indexAll() {
-        Map<String, Object> result = new LinkedHashMap<>();
+    @Auditable(action = "REINDEX", entityType = "ELASTICSEARCH", description = "Full reindex of all data")
+    public IndexResultResponse indexAll() {
         long cases = indexAllCases();
         long persons = indexAllPersons();
         long financial = indexAllFinancial();
-        result.put("casesIndexed", cases);
-        result.put("personsIndexed", persons);
-        result.put("financialIndexed", financial);
-        return result;
+        return IndexResultResponse.builder()
+                .casesIndexed(cases)
+                .personsIndexed(persons)
+                .financialIndexed(financial)
+                .build();
     }
 
     public long indexAllCases() {

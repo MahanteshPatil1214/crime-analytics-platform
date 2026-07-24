@@ -1,0 +1,63 @@
+# Version control
+.git
+.gitignore
+.github
+
+# IDE files
+.idea
+.vscode
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Build output
+target/
+build/
+out/
+
+# Maven wrapper
+.mvn/wrapper/maven-wrapper.jar
+
+# Docker files (avoid recursive builds)
+Dockerfile
+Dockerfile.*
+docker-compose*.yml
+
+# Logs
+*.log
+hs_err_pid*.log
+logs/
+
+# Node modules (if any frontend)
+node_modules/
+npm-debug.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Documentation
+*.md
+LICENSE
+docs/
+
+# Test files
+**/src/test/
+
+# Kubernetes (not needed in Docker context)
+k8s/
+
+# Prometheus/Grafana configs (mounted as volumes)
+prometheus/
+grafana/
+otel-collector-config.yml
+
+# SQL init scripts (mounted as volumes)
+sql/
+
+# Keycloak configs (mounted as volumes)
+keycloak/

@@ -1,0 +1,174 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '21'
+  MAVEN_OPTS: '-Xmx1024m'
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        ports: ['5432:5432']
+        env:
+          POSTGRES_DB: crime_analytics
+          POSTGRES_USER: crime_user
+          POSTGRES_PASSWORD: CrimeSecure2024!
+        options: >-
+          --health-cmd "pg_isready -U crime_user -d crime_analytics"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      neo4j:
+        image: neo4j:5-community
+        ports: ['7474:7474', '7687:7687']
+        env:
+          NEO4J_AUTH: neo4j/neo4jCrime2024!
+          NEO4J_PLUGINS: '["apoc"]'
+        options: >-
+          --health-cmd "wget -qO- http://localhost:7474 || exit 1"
+          --health-interval 15s
+          --health-timeout 5s
+          --health-retries 5
+
+      elasticsearch:
+        image: elasticsearch:8.12.2
+        ports: ['9200:9200']
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: 'false'
+          xpack.security.http.ssl.enabled: 'false'
+          ES_JAVA_OPTS: '-Xms256m -Xmx512m'
+        options: >-
+          --health-cmd "curl -sf http://localhost:9200/_cluster/health || exit 1"
+          --health-interval 15s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Create schema
+        run: psql -h localhost -U crime_user -d crime_analytics -f sql/init/01-schema.sql
+        env:
+          PGPASSWORD: CrimeSecure2024!
+
+      - name: Seed data
+        run: psql -h localhost -U crime_user -d crime_analytics -f sql/init/04-ncrb-seed-data.sql
+        env:
+          PGPASSWORD: CrimeSecure2024!
+
+      - name: Build & Test
+        run: mvn clean verify -B
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/crime_analytics
+          SPRING_DATASOURCE_USERNAME: crime_user
+          SPRING_DATASOURCE_PASSWORD: CrimeSecure2024!
+          SPRING_DATA_REDIS_HOST: localhost
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: neo4jCrime2024!
+          ELASTICSEARCH_URIS: http://localhost:9200
+          AUDIT_HMAC_SECRET: ci-test-secret-key-for-audit-logging
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/target/surefire-reports/'
+          retention-days: 7
+
+  docker-build:
+    name: Docker Build - ${{ matrix.service }}
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service:
+          - gateway-service
+          - incident-service
+          - person-service
+          - financial-service
+          - graph-service
+          - search-service
+          - report-service
+          - conversational-ai-service
+          - etl-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          build-args: SERVICE_NAME=${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  security-scan:
+    name: Security Scan
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'

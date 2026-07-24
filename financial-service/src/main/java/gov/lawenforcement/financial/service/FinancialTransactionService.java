@@ -1,6 +1,9 @@
 package gov.lawenforcement.financial.service;
 
+import gov.lawenforcement.common.audit.Auditable;
+import gov.lawenforcement.common.exception.ResourceNotFoundException;
 import gov.lawenforcement.financial.entity.FinancialTransaction;
+import gov.lawenforcement.financial.dto.FinancialStatsResponse;
 import gov.lawenforcement.financial.repository.FinancialTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,8 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -24,7 +25,7 @@ public class FinancialTransactionService {
     @Transactional(readOnly = true)
     public FinancialTransaction getTransaction(UUID id) {
         return repository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Transaction not found: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("Transaction", "id", id));
     }
 
     @Transactional(readOnly = true)
@@ -44,16 +45,17 @@ public class FinancialTransactionService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getTransactionStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalTransactions", repository.count());
-        stats.put("flaggedCount", repository.countByIsFlagged(true));
-        stats.put("totalAmount", repository.findAll().stream()
-            .map(FinancialTransaction::getAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add));
-        return stats;
+    public FinancialStatsResponse getTransactionStats() {
+        return FinancialStatsResponse.builder()
+                .totalTransactions(repository.count())
+                .flaggedCount(repository.countByIsFlagged(true))
+                .totalAmount(repository.findAll().stream()
+                        .map(FinancialTransaction::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
+                .build();
     }
 
+    @Auditable(action = "FLAG", entityType = "FINANCIAL_TRANSACTION", description = "Flag suspicious transaction")
     @Transactional
     public FinancialTransaction flagTransaction(UUID id, String reason) {
         FinancialTransaction tx = getTransaction(id);
@@ -63,6 +65,7 @@ public class FinancialTransactionService {
         return repository.save(tx);
     }
 
+    @Auditable(action = "CREATE", entityType = "FINANCIAL_TRANSACTION", description = "Create financial transaction")
     @Transactional
     public FinancialTransaction createTransaction(FinancialTransaction transaction) {
         FinancialTransaction saved = repository.save(transaction);
@@ -76,6 +79,7 @@ public class FinancialTransactionService {
         return repository.findByRelatedCaseId(caseId);
     }
 
+    @Auditable(action = "UPDATE", entityType = "FINANCIAL_TRANSACTION", description = "Update financial transaction")
     @Transactional
     public FinancialTransaction updateTransaction(UUID id, FinancialTransaction updated) {
         FinancialTransaction tx = getTransaction(id);
@@ -94,10 +98,11 @@ public class FinancialTransactionService {
         return repository.save(tx);
     }
 
+    @Auditable(action = "DELETE", entityType = "FINANCIAL_TRANSACTION", description = "Delete financial transaction")
     @Transactional
     public void deleteTransaction(UUID id) {
         if (!repository.existsById(id)) {
-            throw new RuntimeException("Transaction not found: " + id);
+            throw new ResourceNotFoundException("Transaction", "id", id);
         }
         repository.deleteById(id);
         log.info("Transaction deleted: id={}", id);

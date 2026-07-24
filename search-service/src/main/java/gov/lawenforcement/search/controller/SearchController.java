@@ -1,16 +1,20 @@
 package gov.lawenforcement.search.controller;
 
+import gov.lawenforcement.search.dto.AutocompleteItem;
+import gov.lawenforcement.search.dto.IndexResultResponse;
+import gov.lawenforcement.search.dto.SearchStatsResponse;
 import gov.lawenforcement.search.service.IndexingService;
 import gov.lawenforcement.search.service.SearchService;
 import gov.lawenforcement.search.repository.CaseSearchRepository;
 import gov.lawenforcement.search.repository.PersonSearchRepository;
 import gov.lawenforcement.search.repository.FinancialSearchRepository;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -26,9 +30,9 @@ public class SearchController {
 
     @PostMapping("/reindex")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> reindex() {
-        Map<String, Object> result = indexingService.indexAll();
-        return ResponseEntity.ok(result);
+    @Timed(value = "search.reindex", description = "Time to reindex all documents")
+    public ResponseEntity<IndexResultResponse> reindex() {
+        return ResponseEntity.ok(indexingService.indexAll());
     }
 
     @GetMapping("/cases")
@@ -60,16 +64,16 @@ public class SearchController {
     }
 
     @GetMapping("/autocomplete")
-    public ResponseEntity<?> autocomplete(@RequestParam String q) {
+    public ResponseEntity<List<AutocompleteItem>> autocomplete(@RequestParam String q) {
         return ResponseEntity.ok(searchService.autocomplete(q));
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> stats() {
-        Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("casesCount", caseRepo.count());
-        stats.put("personsCount", personRepo.count());
-        stats.put("financialCount", financialRepo.count());
-        return ResponseEntity.ok(stats);
+    public ResponseEntity<SearchStatsResponse> stats() {
+        return ResponseEntity.ok(SearchStatsResponse.builder()
+                .casesCount(caseRepo.count())
+                .personsCount(personRepo.count())
+                .financialCount(financialRepo.count())
+                .build());
     }
 }

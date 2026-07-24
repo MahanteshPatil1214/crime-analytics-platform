@@ -16,7 +16,7 @@ $ServiceConfig = @{
     "incident"         = @{ Port = 8082; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "incident-service" }
     "person"           = @{ Port = 8083; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "person-service" }
     "graph"            = @{ Port = 8084; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "graph-service" }
-    "search"           = @{ Port = 8085; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "search-service" }
+    "search"           = @{ Port = 8085; Heap = "512m"; InitHeap = "256m"; Depends = @("discovery","gateway"); Dir = "search-service" }
     "analytics"        = @{ Port = 8086; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "analytics-service" }
     "conversational-ai" = @{ Port = 8087; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "conversational-ai-service" }
     "financial"        = @{ Port = 8088; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "financial-service" }
@@ -66,10 +66,9 @@ function Start-Service {
 
     Write-Host "  Starting $Name (heap: $Heap, init: $InitHeap)..." -ForegroundColor Green
 
-    $process = Start-Process -FilePath "mvn" -ArgumentList @(
-        "spring-boot:run",
-        "-f", $servicePom
-    ) -NoNewWindow -RedirectStandardOutput $logFile -RedirectStandardError "${logFile}.err" -PassThru
+    $jvmArgs = "`"-Dspring-boot.run.jvmArguments=-Xms$InitHeap -Xmx$Heap`""
+    $cmdLine = "mvn spring-boot:run -f `"$servicePom`" $jvmArgs"
+    $process = Start-Process -FilePath "cmd.exe" -ArgumentList "/c $cmdLine" -NoNewWindow -RedirectStandardOutput $logFile -RedirectStandardError "${logFile}.err" -PassThru
 
     return $process
 }

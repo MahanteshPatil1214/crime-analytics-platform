@@ -1,5 +1,7 @@
 package gov.lawenforcement.person.service;
 
+import gov.lawenforcement.common.audit.Auditable;
+import gov.lawenforcement.common.exception.ResourceNotFoundException;
 import gov.lawenforcement.person.entity.Person;
 import gov.lawenforcement.person.repository.PersonRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +26,7 @@ public class PersonService {
     @Transactional(readOnly = true)
     public Person getPerson(UUID id) {
         return personRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Person not found: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("Person", "id", id));
     }
 
     @Transactional(readOnly = true)
@@ -52,6 +54,7 @@ public class PersonService {
         return distribution;
     }
 
+    @Auditable(action = "CREATE", entityType = "PERSON", description = "Create person record")
     @Transactional
     public Person createPerson(Person person) {
         Person saved = personRepository.save(person);
@@ -59,6 +62,7 @@ public class PersonService {
         return saved;
     }
 
+    @Auditable(action = "UPDATE", entityType = "PERSON", description = "Update person record")
     @Transactional
     public Person updatePerson(UUID id, Person updates) {
         Person existing = getPerson(id);
@@ -75,6 +79,7 @@ public class PersonService {
         return personRepository.save(existing);
     }
 
+    @Auditable(action = "DELETE", entityType = "PERSON", description = "Delete person record")
     @Transactional
     public void deletePerson(UUID id) {
         Person existing = getPerson(id);

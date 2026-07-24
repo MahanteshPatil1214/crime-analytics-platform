@@ -1,6 +1,8 @@
 package gov.lawenforcement.incident.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -15,12 +17,14 @@ public class CaseMaster {
     private Integer caseMasterId;
 
     @Column(name = "crime_no", unique = true, nullable = false, length = 30)
+    @NotBlank(message = "Crime number is required")
     private String crimeNo;
 
     @Column(name = "case_no", length = 20)
     private String caseNo;
 
     @Column(name = "crime_registered_date", nullable = false)
+    @NotNull(message = "Crime registered date is required")
     private LocalDate crimeRegisteredDate;
 
     @Column(name = "police_person_id")

@@ -2,6 +2,7 @@ package gov.lawenforcement.report.controller;
 
 import gov.lawenforcement.report.dto.ReportRequest;
 import gov.lawenforcement.report.service.ReportService;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -22,88 +23,44 @@ public class ReportController {
     private final ReportService reportService;
 
     @GetMapping("/fir/{caseId}")
+    @Timed(value = "report.fir", description = "Time to generate FIR report")
     public ResponseEntity<byte[]> generateFirReport(@PathVariable Integer caseId) {
         log.info("Received FIR report request for caseId: {}", caseId);
-
-        try {
-            byte[] pdfBytes = reportService.generateFirReport(caseId);
-
-            String filename = "FIR_Report_" + caseId + "_" +
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".pdf";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
-
-            return ResponseEntity.ok().headers(headers).body(pdfBytes);
-        } catch (Exception e) {
-            log.error("Failed to generate FIR report for caseId: {}", caseId, e);
-            return ResponseEntity.internalServerError()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(("{\"error\": \"PDF generation failed: " + e.getMessage() + "\"}").getBytes());
-        }
+        byte[] pdfBytes = reportService.generateFirReport(caseId);
+        return buildPdfResponse(pdfBytes, "FIR_Report_" + caseId);
     }
 
     @PostMapping("/incident")
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    @Timed(value = "report.incident", description = "Time to generate incident report")
     public ResponseEntity<byte[]> generateIncidentReport(@RequestBody ReportRequest request) {
         log.info("Received incident report request for FIR: {}", request.getFirNumber());
-
-        try {
-            byte[] pdfBytes = reportService.generateIncidentReport(
-                    request.getFirNumber(),
-                    request.getTitle(),
-                    request.getDescription(),
-                    request.getSeverity(),
-                    request.getStatus(),
-                    request.getDistrict(),
-                    request.getDate(),
-                    request.getAddress()
-            );
-
-            String filename = "Incident_Report_" + request.getFirNumber() + "_" +
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".pdf";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
-
-            return ResponseEntity.ok().headers(headers).body(pdfBytes);
-        } catch (Exception e) {
-            log.error("Failed to generate incident report for FIR: {}", request.getFirNumber(), e);
-            return ResponseEntity.internalServerError()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(("{\"error\": \"PDF generation failed: " + e.getMessage() + "\"}").getBytes());
-        }
+        byte[] pdfBytes = reportService.generateIncidentReport(
+                request.getFirNumber(), request.getTitle(), request.getDescription(),
+                request.getSeverity(), request.getStatus(), request.getDistrict(),
+                request.getDate(), request.getAddress()
+        );
+        return buildPdfResponse(pdfBytes, "Incident_Report_" + request.getFirNumber());
     }
 
     @PostMapping("/criminal-profile")
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    @Timed(value = "report.criminalProfile", description = "Time to generate criminal profile")
     public ResponseEntity<byte[]> generateCriminalProfile(@RequestBody ReportRequest request) {
         log.info("Received criminal profile request for: {}", request.getPersonName());
+        byte[] pdfBytes = reportService.generateCriminalProfile(
+                request.getPersonName(), request.getPersonType(),
+                request.getConvictionCount(), request.getRiskScore(), request.getCharges()
+        );
+        return buildPdfResponse(pdfBytes, "Criminal_Profile_" + request.getPersonName().replaceAll("\\s+", "_"));
+    }
 
-        try {
-            byte[] pdfBytes = reportService.generateCriminalProfile(
-                    request.getPersonName(),
-                    request.getPersonType(),
-                    request.getConvictionCount(),
-                    request.getRiskScore(),
-                    request.getCharges()
-            );
-
-            String filename = "Criminal_Profile_" + request.getPersonName().replaceAll("\\s+", "_") + "_" +
-                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".pdf";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
-
-            return ResponseEntity.ok().headers(headers).body(pdfBytes);
-        } catch (Exception e) {
-            log.error("Failed to generate criminal profile for: {}", request.getPersonName(), e);
-            return ResponseEntity.internalServerError()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(("{\"error\": \"PDF generation failed: " + e.getMessage() + "\"}").getBytes());
-        }
+    private ResponseEntity<byte[]> buildPdfResponse(byte[] pdfBytes, String baseName) {
+        String filename = baseName + "_" +
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".pdf";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
     }
 }

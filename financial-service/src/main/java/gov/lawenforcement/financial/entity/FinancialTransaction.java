@@ -1,6 +1,9 @@
 package gov.lawenforcement.financial.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -19,18 +22,24 @@ public class FinancialTransaction {
     private UUID id;
 
     @Column(name = "transaction_ref", unique = true, nullable = false, length = 64)
+    @NotBlank(message = "Transaction reference is required")
     private String transactionRef;
 
     @Column(name = "sender_account_id", nullable = false, length = 64)
+    @NotBlank(message = "Sender account ID is required")
     private String senderAccountId;
 
     @Column(name = "recipient_account_id", nullable = false, length = 64)
+    @NotBlank(message = "Recipient account ID is required")
     private String recipientAccountId;
 
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)
+    @NotNull(message = "Amount is required")
+    @Positive(message = "Amount must be positive")
     private BigDecimal amount;
 
     @Column(name = "currency", nullable = false, length = 3)
+    @NotBlank(message = "Currency is required")
     private String currency;
 
     @Column(name = "transaction_date", nullable = false)
@@ -38,6 +47,7 @@ public class FinancialTransaction {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false)
+    @NotNull(message = "Transaction type is required")
     private TransactionType transactionType;
 
     @Column(name = "is_flagged", nullable = false)

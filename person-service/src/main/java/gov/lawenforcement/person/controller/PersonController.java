@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.UUID;
 
@@ -50,13 +51,13 @@ public class PersonController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
-    public ResponseEntity<Person> createPerson(@RequestBody Person person) {
+    public ResponseEntity<Person> createPerson(@Valid @RequestBody Person person) {
         return ResponseEntity.ok(personService.createPerson(person));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
-    public ResponseEntity<Person> updatePerson(@PathVariable UUID id, @RequestBody Person person) {
+    public ResponseEntity<Person> updatePerson(@PathVariable UUID id, @Valid @RequestBody Person person) {
         return ResponseEntity.ok(personService.updatePerson(id, person));
     }
 

@@ -1,6 +1,8 @@
 package gov.lawenforcement.financial.controller;
 
+import gov.lawenforcement.financial.dto.FinancialStatsResponse;
 import gov.lawenforcement.financial.entity.FinancialTransaction;
+import gov.lawenforcement.financial.dto.FlagTransactionRequest;
 import gov.lawenforcement.financial.service.FinancialTransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -9,8 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -42,7 +44,7 @@ public class FinancialTransactionController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
+    public ResponseEntity<FinancialStatsResponse> getStats() {
         return ResponseEntity.ok(service.getTransactionStats());
     }
 
@@ -53,7 +55,7 @@ public class FinancialTransactionController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
-    public ResponseEntity<FinancialTransaction> createTransaction(@RequestBody FinancialTransaction transaction) {
+    public ResponseEntity<FinancialTransaction> createTransaction(@Valid @RequestBody FinancialTransaction transaction) {
         return ResponseEntity.ok(service.createTransaction(transaction));
     }
 
@@ -61,15 +63,15 @@ public class FinancialTransactionController {
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     public ResponseEntity<FinancialTransaction> flagTransaction(
             @PathVariable UUID id,
-            @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(service.flagTransaction(id, body.get("reason")));
+            @Valid @RequestBody FlagTransactionRequest body) {
+        return ResponseEntity.ok(service.flagTransaction(id, body.getReason()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     public ResponseEntity<FinancialTransaction> updateTransaction(
             @PathVariable UUID id,
-            @RequestBody FinancialTransaction transaction) {
+            @Valid @RequestBody FinancialTransaction transaction) {
         return ResponseEntity.ok(service.updateTransaction(id, transaction));
     }
 

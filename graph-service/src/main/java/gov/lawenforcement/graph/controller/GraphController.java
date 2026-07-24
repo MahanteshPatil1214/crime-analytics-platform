@@ -1,6 +1,9 @@
 package gov.lawenforcement.graph.controller;
 
+import gov.lawenforcement.graph.dto.*;
+import gov.lawenforcement.graph.mapper.GraphMapper;
 import gov.lawenforcement.graph.service.GraphPopulatorService;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import org.neo4j.driver.*;
 import org.springframework.http.ResponseEntity;
@@ -16,22 +19,18 @@ public class GraphController {
 
     private final GraphPopulatorService populatorService;
     private final Driver neo4jDriver;
+    private final GraphMapper graphMapper;
 
     @PostMapping("/populate")
     @PreAuthorize("hasRole('ADMIN')")
+    @Timed(value = "graph.populate", description = "Time to populate the graph database")
     public ResponseEntity<Map<String, Object>> populate() {
+        populatorService.populateAll();
         Map<String, Object> result = new LinkedHashMap<>();
-        try {
-            populatorService.populateAll();
-            result.put("status", "success");
-            result.put("message", "Graph populated successfully");
-            result.put("stats", populatorService.getStats());
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            result.put("status", "error");
-            result.put("message", e.getMessage());
-            return ResponseEntity.internalServerError().body(result);
-        }
+        result.put("status", "success");
+        result.put("message", "Graph populated successfully");
+        result.put("stats", populatorService.getStats());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/stats")
@@ -40,7 +39,8 @@ public class GraphController {
     }
 
     @GetMapping("/full")
-    public ResponseEntity<Map<String, Object>> fullGraph() {
+    @Timed(value = "graph.full", description = "Time to fetch full graph")
+    public ResponseEntity<GraphResponse> fullGraph() {
         String nodeCypher = """
             MATCH (n)
             RETURN n.personId AS personId, n.crimeNo AS crimeNo,
@@ -59,45 +59,23 @@ public class GraphController {
 
         try (Session session = neo4jDriver.session()) {
             return session.executeRead(tx -> {
-                Map<String, Object> response = new LinkedHashMap<>();
-
-                var nodeResult = tx.run(nodeCypher);
-                List<Map<String, Object>> nodes = new ArrayList<>();
-                while (nodeResult.hasNext()) {
-                    var r = nodeResult.next();
-                    Map<String, Object> n = new LinkedHashMap<>();
-                    n.put("personId", r.get("personId").isNull() ? null : r.get("personId").asString());
-                    n.put("crimeNo", r.get("crimeNo").isNull() ? null : r.get("crimeNo").asString());
-                    n.put("name", r.get("name").isNull() ? null : r.get("name").asString());
-                    n.put("personType", r.get("personType").isNull() ? null : r.get("personType").asString());
-                    n.put("labels", r.get("labels").asList(Value::asString));
-                    nodes.add(n);
-                }
-                response.put("nodes", nodes);
-
-                var relResult = tx.run(relCypher);
-                List<Map<String, Object>> rels = new ArrayList<>();
-                while (relResult.hasNext()) {
-                    var r = relResult.next();
-                    Map<String, Object> rel = new LinkedHashMap<>();
-                    rel.put("type", r.get("relType").asString());
-                    rel.put("fromId", r.get("fromId").asString());
-                    rel.put("toId", r.get("toId").asString());
-                    rels.add(rel);
-                }
-                response.put("relationships", rels);
-
-                return ResponseEntity.ok(response);
+                List<GraphNode> nodes = tx.run(nodeCypher).list(graphMapper::toNode);
+                List<GraphRelationship> rels = tx.run(relCypher).list(graphMapper::toRelationship);
+                return ResponseEntity.ok(GraphResponse.builder().nodes(nodes).relationships(rels).build());
             });
         }
     }
 
     @GetMapping("/person/{personId}/network")
-    public ResponseEntity<Map<String, Object>> personNetwork(
+    public ResponseEntity<PersonNetworkResponse> personNetwork(
             @PathVariable String personId,
             @RequestParam(defaultValue = "2") int hops) {
+        if (personId == null || personId.isBlank() || !personId.matches("^[A-Za-z0-9_-]{1,50}$")) {
+            throw new IllegalArgumentException("Invalid person ID format");
+        }
+        int validatedHops = Math.min(Math.max(hops, 1), 6);
         String nodeCypher = "MATCH (p:Person {personId: $personId})-[*1.."
-                + hops + "]-(connected) "
+                + validatedHops + "]-(connected) "
                 + "RETURN DISTINCT connected.personId AS personId, "
                 + "connected.crimeNo AS crimeNo, "
                 + "connected.name AS name, "
@@ -127,61 +105,41 @@ public class GraphController {
 
         try (Session session = neo4jDriver.session()) {
             return session.executeRead(tx -> {
-                Map<String, Object> response = new LinkedHashMap<>();
+                List<GraphNode> nodes = tx.run(nodeCypher, Map.of("personId", personId))
+                        .list(graphMapper::toNode);
 
-                var nodeResult = tx.run(nodeCypher, Map.of("personId", personId));
-                List<Map<String, Object>> nodes = new ArrayList<>();
-                while (nodeResult.hasNext()) {
-                    var r = nodeResult.next();
-                    Map<String, Object> node = new LinkedHashMap<>();
-                    node.put("personId", r.get("personId").isNull() ? null : r.get("personId").asString());
-                    node.put("crimeNo", r.get("crimeNo").isNull() ? null : r.get("crimeNo").asString());
-                    node.put("name", r.get("name").isNull() ? null : r.get("name").asString());
-                    node.put("personType", r.get("personType").isNull() ? null : r.get("personType").asString());
-                    node.put("labels", r.get("labels").asList(Value::asString));
-                    nodes.add(node);
-                }
-                response.put("nodes", nodes);
-
-                List<Map<String, Object>> rels = new ArrayList<>();
                 Set<String> seenRels = new HashSet<>();
+                List<GraphRelationship> rels = new ArrayList<>();
 
-                var relResult1 = tx.run(relCypher, Map.of("personId", personId));
-                while (relResult1.hasNext()) {
-                    var r = relResult1.next();
+                tx.run(relCypher, Map.of("personId", personId)).forEachRemaining(r -> {
                     String key = r.get("relType").asString() + "|" + r.get("fromId").asString() + "|" + r.get("toId").asString();
                     if (seenRels.add(key)) {
-                        Map<String, Object> rel = new LinkedHashMap<>();
-                        rel.put("type", r.get("relType").asString());
-                        rel.put("fromId", r.get("fromId").asString());
-                        rel.put("toId", r.get("toId").asString());
-                        rels.add(rel);
+                        rels.add(graphMapper.toRelationship(r));
                     }
-                }
+                });
 
-                var relResult2 = tx.run(relCypher2, Map.of("personId", personId));
-                while (relResult2.hasNext()) {
-                    var r = relResult2.next();
+                tx.run(relCypher2, Map.of("personId", personId)).forEachRemaining(r -> {
                     String key = r.get("relType").asString() + "|" + r.get("fromId").asString() + "|" + r.get("toId").asString();
                     if (seenRels.add(key)) {
-                        Map<String, Object> rel = new LinkedHashMap<>();
-                        rel.put("type", r.get("relType").asString());
-                        rel.put("fromId", r.get("fromId").asString());
-                        rel.put("toId", r.get("toId").asString());
-                        rels.add(rel);
+                        rels.add(graphMapper.toRelationship(r));
                     }
-                }
+                });
 
-                response.put("relationships", rels);
-                response.put("personId", personId);
-                response.put("hops", hops);
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(PersonNetworkResponse.builder()
+                        .personId(personId)
+                        .hops(validatedHops)
+                        .nodes(nodes)
+                        .relationships(rels)
+                        .build());
             });
         }
     }
 
     @GetMapping("/case/{crimeNo}/network")
-    public ResponseEntity<Map<String, Object>> caseNetwork(@PathVariable String crimeNo) {
+    public ResponseEntity<CaseNetworkResponse> caseNetwork(@PathVariable String crimeNo) {
+        if (crimeNo == null || crimeNo.isBlank() || !crimeNo.matches("^[A-Za-z0-9/]{1,50}$")) {
+            throw new IllegalArgumentException("Invalid crime number format");
+        }
         String cypher = """
             MATCH (c:Case {crimeNo: $crimeNo})<-[r]-(p:Person)
             RETURN collect(DISTINCT {
@@ -201,20 +159,24 @@ public class GraphController {
             return session.executeRead(tx -> {
                 var result = tx.run(cypher, Map.of("crimeNo", crimeNo));
                 if (!result.hasNext()) {
-                    return ResponseEntity.ok(Map.of("crimeNo", crimeNo, "persons", List.of(), "relationships", List.of()));
+                    return ResponseEntity.ok(CaseNetworkResponse.builder()
+                            .crimeNo(crimeNo).persons(List.of()).relationships(List.of()).build());
                 }
                 var record = result.next();
-                Map<String, Object> response = new LinkedHashMap<>();
-                response.put("crimeNo", crimeNo);
-                response.put("persons", record.get("persons").asList(v -> v.asMap()));
-                response.put("relationships", record.get("relationships").asList(v -> v.asMap()));
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(CaseNetworkResponse.builder()
+                        .crimeNo(crimeNo)
+                        .persons(record.get("persons").asList(v -> v.asMap()))
+                        .relationships(record.get("relationships").asList(v -> v.asMap()))
+                        .build());
             });
         }
     }
 
     @GetMapping("/search")
-    public ResponseEntity<Map<String, Object>> search(@RequestParam String q) {
+    public ResponseEntity<PersonSearchResponse> search(@RequestParam String q) {
+        if (q == null || q.isBlank() || q.length() > 100) {
+            throw new IllegalArgumentException("Search query must be 1-100 characters");
+        }
         String cypher = """
             MATCH (p:Person)
             WHERE toLower(p.name) CONTAINS toLower($query)
@@ -229,28 +191,26 @@ public class GraphController {
         try (Session session = neo4jDriver.session()) {
             return session.executeRead(tx -> {
                 var result = tx.run(cypher, Map.of("query", q));
-                List<Map<String, Object>> persons = new ArrayList<>();
+                List<PersonSearchResponse.PersonSearchResult> persons = new ArrayList<>();
                 while (result.hasNext()) {
                     var r = result.next();
-                    Map<String, Object> person = new LinkedHashMap<>();
-                    person.put("personId", r.get("personId").asString());
-                    person.put("name", r.get("name").asString());
-                    person.put("age", r.get("age").isNull() ? null : r.get("age").asInt());
-                    person.put("gender", r.get("gender").isNull() ? null : r.get("gender").asString());
-                    person.put("personType", r.get("personType").asString());
-                    persons.add(person);
+                    persons.add(PersonSearchResponse.PersonSearchResult.builder()
+                            .personId(r.get("personId").asString())
+                            .name(r.get("name").asString())
+                            .age(r.get("age").isNull() ? null : r.get("age").asInt())
+                            .gender(r.get("gender").isNull() ? null : r.get("gender").asString())
+                            .personType(r.get("personType").asString())
+                            .build());
                 }
-                Map<String, Object> response = new LinkedHashMap<>();
-                response.put("query", q);
-                response.put("results", persons);
-                response.put("count", persons.size());
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(PersonSearchResponse.builder()
+                        .query(q).results(persons).count(persons.size()).build());
             });
         }
     }
 
     @GetMapping("/communities")
-    public ResponseEntity<Map<String, Object>> communities() {
+    @Timed(value = "graph.communities", description = "Time to detect communities")
+    public ResponseEntity<CommunityResponse> communities() {
         String cypher = """
             MATCH (p:Person)-[r:CO_OFFENDER]-(other:Person)
             WITH p, collect(DISTINCT other) AS neighbors, count(DISTINCT other) AS degree
@@ -273,33 +233,38 @@ public class GraphController {
         try (Session session = neo4jDriver.session()) {
             return session.executeRead(tx -> {
                 var result = tx.run(cypher);
-                List<Map<String, Object>> communities = new ArrayList<>();
+                List<CommunityDto> communities = new ArrayList<>();
                 Set<String> seen = new HashSet<>();
                 while (result.hasNext()) {
                     var r = result.next();
                     String personId = r.get("personId").asString();
                     if (seen.add(personId)) {
-                        Map<String, Object> community = new LinkedHashMap<>();
-                        community.put("personId", personId);
-                        community.put("name", r.get("name").asString());
-                        community.put("degree", r.get("degree").asInt());
-                        community.put("communityMembers", r.get("communityMembers").asList(Value::asString));
-                        community.put("communitySize", r.get("communitySize").asInt());
-                        communities.add(community);
+                        communities.add(CommunityDto.builder()
+                                .personId(personId)
+                                .name(r.get("name").asString())
+                                .degree(r.get("degree").asInt())
+                                .communityMembers(r.get("communityMembers").asList(Value::asString))
+                                .communitySize(r.get("communitySize").asInt())
+                                .build());
                     }
                 }
-                Map<String, Object> response = new LinkedHashMap<>();
-                response.put("communities", communities);
-                response.put("count", communities.size());
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(CommunityResponse.builder()
+                        .communities(communities).count(communities.size()).build());
             });
         }
     }
 
     @GetMapping("/path")
-    public ResponseEntity<Map<String, Object>> shortestPath(
+    @Timed(value = "graph.shortestPath", description = "Time to find shortest path")
+    public ResponseEntity<ShortestPathResponse> shortestPath(
             @RequestParam String from,
             @RequestParam String to) {
+        if (from == null || from.isBlank() || to == null || to.isBlank()) {
+            throw new IllegalArgumentException("'from' and 'to' person IDs are required");
+        }
+        if (from.length() > 50 || to.length() > 50) {
+            throw new IllegalArgumentException("Person ID must not exceed 50 characters");
+        }
         String cypher = """
             MATCH (source:Person {personId: $from})
             MATCH (target:Person {personId: $to})
@@ -323,23 +288,19 @@ public class GraphController {
         try (Session session = neo4jDriver.session()) {
             return session.executeRead(tx -> {
                 var result = tx.run(cypher, Map.of("from", from, "to", to));
-                Map<String, Object> response = new LinkedHashMap<>();
-                response.put("from", from);
-                response.put("to", to);
+                ShortestPathResponse.ShortestPathResponseBuilder builder = ShortestPathResponse.builder()
+                        .from(from).to(to);
 
                 if (result.hasNext()) {
                     var record = result.next();
-                    response.put("found", true);
-                    response.put("pathLength", record.get("pathLength").asInt());
-                    response.put("nodes", record.get("nodes").asList(v -> v.asMap()));
-                    response.put("relationships", record.get("relationships").asList(v -> v.asMap()));
+                    builder.found(true)
+                            .pathLength(record.get("pathLength").asInt())
+                            .nodes(record.get("nodes").asList(v -> v.asMap()))
+                            .relationships(record.get("relationships").asList(v -> v.asMap()));
                 } else {
-                    response.put("found", false);
-                    response.put("pathLength", -1);
-                    response.put("nodes", List.of());
-                    response.put("relationships", List.of());
+                    builder.found(false).pathLength(-1).nodes(List.of()).relationships(List.of());
                 }
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok(builder.build());
             });
         }
     }

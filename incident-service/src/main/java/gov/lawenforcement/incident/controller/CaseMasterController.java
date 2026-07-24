@@ -1,12 +1,13 @@
 package gov.lawenforcement.incident.controller;
 
-import gov.lawenforcement.incident.dto.CaseSearchResult;
+import gov.lawenforcement.incident.dto.*;
 import gov.lawenforcement.incident.entity.CaseMaster;
 import gov.lawenforcement.incident.service.CaseMasterService;
 import gov.lawenforcement.incident.service.CaseSearchService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,9 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/cases")
@@ -29,6 +30,7 @@ public class CaseMasterController {
 
     @GetMapping("/search")
     @Operation(summary = "Search FIR cases", description = "Paginated search with filters for district, status, crime head, crime number, brief facts, and date range")
+    @Timed(value = "case.search", description = "Time to search cases")
     public ResponseEntity<Page<CaseSearchResult>> search(
             @Parameter(description = "District name (partial match)") @RequestParam(required = false) String district,
             @Parameter(description = "Case status ID") @RequestParam(required = false) Integer statusId,
@@ -45,40 +47,40 @@ public class CaseMasterController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get case detail", description = "Returns full case details including complainants, victims, accused, arrests, charge sheets, and act sections")
-    public ResponseEntity<Map<String, Object>> getCaseDetail(
+    public ResponseEntity<CaseDetailResponse> getCaseDetail(
             @Parameter(description = "Case master ID") @PathVariable Integer id) {
         return ResponseEntity.ok(caseMasterService.getCaseDetail(id));
     }
 
     @GetMapping("/{id}/involvements")
     @Operation(summary = "Get case involvements", description = "Lists all persons (complainants, victims, accused) involved in a case")
-    public ResponseEntity<List<Map<String, Object>>> getInvolvements(
+    public ResponseEntity<List<InvolvementDto>> getInvolvements(
             @Parameter(description = "Case master ID") @PathVariable Integer id) {
         return ResponseEntity.ok(caseMasterService.getInvolvements(id));
     }
 
     @GetMapping("/stats")
     @Operation(summary = "Get case statistics", description = "Aggregated counts: total, open, under investigation, charge sheeted, closed")
-    public ResponseEntity<Map<String, Object>> getStats() {
+    public ResponseEntity<CaseStatsResponse> getStats() {
         return ResponseEntity.ok(caseMasterService.getStats());
     }
 
     @GetMapping("/stats/districts")
     @Operation(summary = "Get district-wise stats", description = "Case counts grouped by police station")
-    public ResponseEntity<List<Map<String, Object>>> getDistrictStats() {
+    public ResponseEntity<List<UnitStatsDto>> getDistrictStats() {
         return ResponseEntity.ok(caseMasterService.getDistrictStats());
     }
 
     @GetMapping("/stats/crime-heads")
     @Operation(summary = "Get crime head stats", description = "Case counts grouped by crime major head")
-    public ResponseEntity<List<Map<String, Object>>> getCrimeHeadStats() {
+    public ResponseEntity<List<CrimeHeadStatsDto>> getCrimeHeadStats() {
         return ResponseEntity.ok(caseMasterService.getCrimeHeadStats());
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @Operation(summary = "Create a new case", description = "Register a new FIR case")
-    public ResponseEntity<CaseMaster> createCase(@RequestBody CaseMaster caseMaster) {
+    public ResponseEntity<CaseMaster> createCase(@Valid @RequestBody CaseMaster caseMaster) {
         CaseMaster created = caseMasterService.createCase(caseMaster);
         return ResponseEntity.created(URI.create("/api/v1/cases/" + created.getCaseMasterId())).body(created);
     }
@@ -88,7 +90,7 @@ public class CaseMasterController {
     @Operation(summary = "Update a case", description = "Update case details or status")
     public ResponseEntity<CaseMaster> updateCase(
             @PathVariable Integer id,
-            @RequestBody CaseMaster caseMaster) {
+            @Valid @RequestBody CaseMaster caseMaster) {
         return ResponseEntity.ok(caseMasterService.updateCase(id, caseMaster));
     }
 
@@ -97,8 +99,8 @@ public class CaseMasterController {
     @Operation(summary = "Update case status", description = "Change the status of a case")
     public ResponseEntity<CaseMaster> updateCaseStatus(
             @PathVariable Integer id,
-            @RequestBody Map<String, Integer> body) {
-        return ResponseEntity.ok(caseMasterService.updateCaseStatus(id, body.get("statusId")));
+            @Valid @RequestBody CaseStatusUpdateRequest body) {
+        return ResponseEntity.ok(caseMasterService.updateCaseStatus(id, body.getStatusId()));
     }
 
     @DeleteMapping("/{id}")

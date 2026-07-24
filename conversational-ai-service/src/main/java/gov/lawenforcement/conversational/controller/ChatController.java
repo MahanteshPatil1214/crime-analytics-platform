@@ -1,6 +1,8 @@
 package gov.lawenforcement.conversational.controller;
 
+import gov.lawenforcement.conversational.dto.ChatMessageRequest;
 import gov.lawenforcement.conversational.service.ChatService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,10 +19,8 @@ public class ChatController {
     }
 
     @PostMapping("/message")
-    public ResponseEntity<Map<String, Object>> sendMessage(@RequestBody Map<String, Object> body) {
-        String message = (String) body.getOrDefault("message", "");
-        String sessionId = (String) body.getOrDefault("sessionId", "default");
-        Map<String, Object> response = chatService.processMessage(sessionId, message);
+    public ResponseEntity<Map<String, Object>> sendMessage(@Valid @RequestBody ChatMessageRequest body) {
+        Map<String, Object> response = chatService.processMessage(body.getSessionId(), body.getMessage());
         return ResponseEntity.ok(response);
     }
 

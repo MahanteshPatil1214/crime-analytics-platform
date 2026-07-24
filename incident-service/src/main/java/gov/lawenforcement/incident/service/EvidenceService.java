@@ -1,5 +1,8 @@
 package gov.lawenforcement.incident.service;
 
+import gov.lawenforcement.common.audit.Auditable;
+import gov.lawenforcement.common.exception.ResourceNotFoundException;
+import gov.lawenforcement.common.exception.BusinessException;
 import gov.lawenforcement.incident.entity.Evidence;
 import gov.lawenforcement.incident.repository.EvidenceRepository;
 import jakarta.annotation.PostConstruct;
@@ -34,6 +37,7 @@ public class EvidenceService {
         Files.createDirectories(uploadDir);
     }
 
+    @Auditable(action = "UPLOAD", entityType = "EVIDENCE", description = "Upload evidence file")
     public Evidence upload(Integer caseMasterId, MultipartFile file, String description, Integer uploadedBy) throws IOException {
         String ext = "";
         String origName = file.getOriginalFilename();
@@ -64,22 +68,23 @@ public class EvidenceService {
 
     public Resource download(Integer evidenceId) throws IOException {
         Evidence evidence = evidenceRepository.findById(evidenceId)
-                .orElseThrow(() -> new RuntimeException("Evidence not found: " + evidenceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence", "id", evidenceId));
         Path filePath = Paths.get(evidence.getStoragePath());
         if (!Files.exists(filePath)) {
-            throw new RuntimeException("File not found on disk: " + evidence.getStoragePath());
+            throw new BusinessException("FILE_NOT_FOUND", "File not found on disk: " + evidence.getStoragePath());
         }
         return new FileSystemResource(filePath);
     }
 
     public Evidence getMeta(Integer evidenceId) {
         return evidenceRepository.findById(evidenceId)
-                .orElseThrow(() -> new RuntimeException("Evidence not found: " + evidenceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence", "id", evidenceId));
     }
 
+    @Auditable(action = "DELETE", entityType = "EVIDENCE", description = "Delete evidence file")
     public void delete(Integer evidenceId) throws IOException {
         Evidence evidence = evidenceRepository.findById(evidenceId)
-                .orElseThrow(() -> new RuntimeException("Evidence not found: " + evidenceId));
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence", "id", evidenceId));
         Path filePath = Paths.get(evidence.getStoragePath());
         Files.deleteIfExists(filePath);
         evidenceRepository.delete(evidence);

@@ -1,5 +1,6 @@
 server:
   port: 8087
+  shutdown: graceful
 
 spring:
   application:
@@ -12,7 +13,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/crime_analytics
     username: crime_admin
-    password: CrimeSecure2024!
+    password: ${SPRING_DATASOURCE_PASSWORD:CrimeSecure2024!}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -31,3 +32,31 @@ eureka:
 logging:
   level:
     gov.lawenforcement.conversational: INFO
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: conversational-ai-service
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

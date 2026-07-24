@@ -1,5 +1,6 @@
 server:
   port: 8761
+  shutdown: graceful
 
 spring:
   application:
@@ -16,3 +17,34 @@ eureka:
   server:
     enableSelfPreservation: false
     evictionIntervalTimerInMs: 10000
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    eureka:
+      enabled: false
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: discovery-service
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

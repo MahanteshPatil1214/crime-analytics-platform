@@ -125,11 +125,11 @@ export const FinancialPage: React.FC = () => {
         transactionRef: values.transactionRef,
         senderAccountId: values.senderAccountId,
         recipientAccountId: values.recipientAccountId,
-        amount: values.amount,
+        amount: typeof values.amount === 'string' ? parseFloat(values.amount) : values.amount,
         currency: values.currency,
         transactionDate: values.transactionDate.toISOString(),
         transactionType: values.transactionType,
-        relatedCaseId: values.relatedCaseId ?? null,
+        relatedCaseId: values.relatedCaseId ? Number(values.relatedCaseId) : null,
         flagReason: values.flagReason || null,
       };
       if (editingRecord) {

@@ -1,5 +1,8 @@
 package gov.lawenforcement.incident.service;
 
+import gov.lawenforcement.common.audit.Auditable;
+import gov.lawenforcement.common.exception.ResourceNotFoundException;
+import gov.lawenforcement.incident.dto.*;
 import gov.lawenforcement.incident.entity.CaseMaster;
 import gov.lawenforcement.incident.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,116 +32,94 @@ public class CaseMasterService {
 
     public CaseMaster getById(Integer id) {
         return caseMasterRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Case not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Case", "id", id));
     }
 
-    public Map<String, Object> getCaseDetail(Integer id) {
+    public CaseDetailResponse getCaseDetail(Integer id) {
         CaseMaster caseMaster = getById(id);
-
-        Map<String, Object> detail = new LinkedHashMap<>();
-        detail.put("case", caseMaster);
-        detail.put("complainants", complainantDetailsRepository.findByCaseMasterId(id));
-        detail.put("victims", victimRepository.findByCaseMasterId(id));
-        detail.put("accused", accusedRepository.findByCaseMasterId(id));
-        detail.put("arrests", arrestSurrenderRepository.findByCaseMasterId(id));
-        detail.put("actSections", actSectionAssociationRepository.findByCaseMasterId(id));
-        detail.put("chargesheets", chargesheetDetailsRepository.findByCaseMasterId(id));
-        detail.put("occurrenceTime", invOccuranceTimeRepository.findByCaseMasterId(id).orElse(null));
-
-        return detail;
+        return CaseDetailResponse.builder()
+                .caseInfo(caseMaster)
+                .complainants(complainantDetailsRepository.findByCaseMasterId(id))
+                .victims(victimRepository.findByCaseMasterId(id))
+                .accused(accusedRepository.findByCaseMasterId(id))
+                .arrests(arrestSurrenderRepository.findByCaseMasterId(id))
+                .actSections(actSectionAssociationRepository.findByCaseMasterId(id))
+                .chargesheets(chargesheetDetailsRepository.findByCaseMasterId(id))
+                .occurrenceTime(invOccuranceTimeRepository.findByCaseMasterId(id).orElse(null))
+                .build();
     }
 
-    public List<Map<String, Object>> getInvolvements(Integer caseId) {
-        List<Map<String, Object>> involvements = new ArrayList<>();
+    public List<InvolvementDto> getInvolvements(Integer caseId) {
+        List<InvolvementDto> involvements = new ArrayList<>();
 
-        complainantDetailsRepository.findByCaseMasterId(caseId).forEach(c -> {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("type", "COMPLAINANT");
-            entry.put("name", c.getComplainantName());
-            entry.put("age", c.getAgeYear());
-            entry.put("genderId", c.getGenderId());
-            involvements.add(entry);
-        });
+        complainantDetailsRepository.findByCaseMasterId(caseId).forEach(c ->
+                involvements.add(InvolvementDto.builder()
+                        .type("COMPLAINANT")
+                        .name(c.getComplainantName())
+                        .age(c.getAgeYear())
+                        .genderId(c.getGenderId())
+                        .build())
+        );
 
-        victimRepository.findByCaseMasterId(caseId).forEach(v -> {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("type", "VICTIM");
-            entry.put("name", v.getVictimName());
-            entry.put("age", v.getAgeYear());
-            entry.put("genderId", v.getGenderId());
-            involvements.add(entry);
-        });
+        victimRepository.findByCaseMasterId(caseId).forEach(v ->
+                involvements.add(InvolvementDto.builder()
+                        .type("VICTIM")
+                        .name(v.getVictimName())
+                        .age(v.getAgeYear())
+                        .genderId(v.getGenderId())
+                        .build())
+        );
 
-        accusedRepository.findByCaseMasterId(caseId).forEach(a -> {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("type", "ACCUSED");
-            entry.put("name", a.getAccusedName());
-            entry.put("age", a.getAgeYear());
-            entry.put("genderId", a.getGenderId());
-            entry.put("personId", a.getPersonId());
-            involvements.add(entry);
-        });
+        accusedRepository.findByCaseMasterId(caseId).forEach(a ->
+                involvements.add(InvolvementDto.builder()
+                        .type("ACCUSED")
+                        .name(a.getAccusedName())
+                        .age(a.getAgeYear())
+                        .genderId(a.getGenderId())
+                        .personId(a.getPersonId())
+                        .build())
+        );
 
         return involvements;
     }
 
-    public Map<String, Object> getStats() {
+    public CaseStatsResponse getStats() {
         List<CaseMaster> allCases = caseMasterRepository.findAll();
-
-        Map<String, Object> stats = new LinkedHashMap<>();
-        stats.put("totalCases", allCases.size());
-        stats.put("openCases", allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() == 1).count());
-        stats.put("underInvestigation", allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() == 2).count());
-        stats.put("chargeSheeted", allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() == 3).count());
-        stats.put("closed", allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() >= 4).count());
-
-        return stats;
+        return CaseStatsResponse.builder()
+                .totalCases(allCases.size())
+                .openCases(allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() == 1).count())
+                .underInvestigation(allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() == 2).count())
+                .chargeSheeted(allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() == 3).count())
+                .closed(allCases.stream().filter(c -> c.getCaseStatusId() != null && c.getCaseStatusId() >= 4).count())
+                .build();
     }
 
-    public List<Map<String, Object>> getDistrictStats() {
-        List<Map<String, Object>> results = new ArrayList<>();
+    public List<UnitStatsDto> getDistrictStats() {
         List<CaseMaster> allCases = caseMasterRepository.findAll();
-
-        Map<Integer, Long> stationCounts = new HashMap<>();
-        for (CaseMaster c : allCases) {
-            if (c.getPoliceStationId() != null) {
-                stationCounts.merge(c.getPoliceStationId(), 1L, Long::sum);
-            }
-        }
-
-        for (Map.Entry<Integer, Long> entry : stationCounts.entrySet()) {
-            Map<String, Object> stat = new LinkedHashMap<>();
-            stat.put("unitId", entry.getKey());
-            stat.put("count", entry.getValue());
-            results.add(stat);
-        }
-        return results;
+        Map<Integer, Long> stationCounts = allCases.stream()
+                .filter(c -> c.getPoliceStationId() != null)
+                .collect(Collectors.groupingBy(CaseMaster::getPoliceStationId, Collectors.counting()));
+        return stationCounts.entrySet().stream()
+                .map(e -> UnitStatsDto.builder().unitId(e.getKey()).count(e.getValue()).build())
+                .collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> getCrimeHeadStats() {
-        List<Map<String, Object>> results = new ArrayList<>();
+    public List<CrimeHeadStatsDto> getCrimeHeadStats() {
         List<CaseMaster> allCases = caseMasterRepository.findAll();
-
-        Map<Integer, Long> headCounts = new HashMap<>();
-        for (CaseMaster c : allCases) {
-            if (c.getCrimeMajorHeadId() != null) {
-                headCounts.merge(c.getCrimeMajorHeadId(), 1L, Long::sum);
-            }
-        }
-
-        for (Map.Entry<Integer, Long> entry : headCounts.entrySet()) {
-            Map<String, Object> stat = new LinkedHashMap<>();
-            stat.put("crimeHeadId", entry.getKey());
-            stat.put("count", entry.getValue());
-            results.add(stat);
-        }
-        return results;
+        Map<Integer, Long> headCounts = allCases.stream()
+                .filter(c -> c.getCrimeMajorHeadId() != null)
+                .collect(Collectors.groupingBy(CaseMaster::getCrimeMajorHeadId, Collectors.counting()));
+        return headCounts.entrySet().stream()
+                .map(e -> CrimeHeadStatsDto.builder().crimeHeadId(e.getKey()).count(e.getValue()).build())
+                .collect(Collectors.toList());
     }
 
+    @Auditable(action = "CREATE", entityType = "CASE", description = "Create new case")
     public CaseMaster createCase(CaseMaster caseMaster) {
         return caseMasterRepository.save(caseMaster);
     }
 
+    @Auditable(action = "UPDATE", entityType = "CASE", description = "Update case details")
     public CaseMaster updateCase(Integer id, CaseMaster updates) {
         CaseMaster existing = getById(id);
         existing.setCrimeNo(updates.getCrimeNo());
@@ -160,12 +142,14 @@ public class CaseMasterService {
         return caseMasterRepository.save(existing);
     }
 
+    @Auditable(action = "UPDATE_STATUS", entityType = "CASE", description = "Update case status")
     public CaseMaster updateCaseStatus(Integer id, Integer statusId) {
         CaseMaster existing = getById(id);
         existing.setCaseStatusId(statusId);
         return caseMasterRepository.save(existing);
     }
 
+    @Auditable(action = "DELETE", entityType = "CASE", description = "Delete case")
     public void deleteCase(Integer id) {
         CaseMaster existing = getById(id);
         caseMasterRepository.delete(existing);

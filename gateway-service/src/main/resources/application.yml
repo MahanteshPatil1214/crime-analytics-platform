@@ -1,9 +1,15 @@
 server:
   port: 8080
+  shutdown: graceful
 
 spring:
   application:
     name: gateway-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redisCrime2024!}
   security:
     oauth2:
       resourceserver:
@@ -13,13 +19,20 @@ spring:
     gateway:
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
+            redis-rate-limiter.requestedTokens: 1
+            key-resolver: "#{@userKeyResolver}"
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "http://localhost:3000"
-            allowedMethods: "*"
+            allowedOriginPatterns: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+            allowedMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
             allowedHeaders: "*"
             allowCredentials: true
+            maxAge: 3600
       routes:
         - id: incident-service-cases
           uri: lb://incident-service
@@ -27,54 +40,176 @@ spring:
             - Path=/api/v1/cases/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: incidentServiceCB
+                fallbackUri: forward:/fallback
         - id: incident-service-lookups
           uri: lb://incident-service
           predicates:
             - Path=/api/v1/lookups/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: incidentServiceCB
+                fallbackUri: forward:/fallback
         - id: incident-service-incidents
           uri: lb://incident-service
           predicates:
             - Path=/api/v1/incidents/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: incidentServiceCB
+                fallbackUri: forward:/fallback
+        - id: person-service
+          uri: lb://person-service
+          predicates:
+            - Path=/api/v1/persons/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: personServiceCB
+                fallbackUri: forward:/fallback
         - id: financial-service
           uri: lb://financial-service
           predicates:
             - Path=/api/v1/financial/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: financialServiceCB
+                fallbackUri: forward:/fallback
         - id: report-service
           uri: lb://report-service
           predicates:
             - Path=/api/v1/reports/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: reportServiceCB
+                fallbackUri: forward:/fallback
         - id: conversational-ai-ws
           uri: lb:ws://conversational-ai-service
           predicates:
             - Path=/ws/chat/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: conversationalAiServiceCB
+                fallbackUri: forward:/fallback
         - id: conversational-ai-http
           uri: lb://conversational-ai-service
           predicates:
             - Path=/api/v1/chat/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: conversationalAiServiceCB
+                fallbackUri: forward:/fallback
         - id: graph-service
           uri: lb://graph-service
           predicates:
             - Path=/api/v1/graph/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: graphServiceCB
+                fallbackUri: forward:/fallback
         - id: search-service
           uri: lb://search-service
           predicates:
             - Path=/api/v1/search/**
           filters:
             - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: searchServiceCB
+                fallbackUri: forward:/fallback
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 5
+        slidingWindowType: COUNT_BASED
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+    instances:
+      incidentServiceCB:
+        baseConfig: default
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+      personServiceCB:
+        baseConfig: default
+      financialServiceCB:
+        baseConfig: default
+      reportServiceCB:
+        baseConfig: default
+      conversationalAiServiceCB:
+        baseConfig: default
+        failureRateThreshold: 60
+        waitDurationInOpenState: 60s
+      graphServiceCB:
+        baseConfig: default
+      searchServiceCB:
+        baseConfig: default
+        slidingWindowSize: 20
+        failureRateThreshold: 40
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 10s
+    instances:
+      conversationalAiServiceCB:
+        timeoutDuration: 30s
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    diskspace:
+      enabled: false
+    eureka:
+      enabled: false
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: gateway-service
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 eureka:
   instance:
