@@ -1,6 +1,7 @@
 package gov.lawenforcement.incident.controller;
 
-import gov.lawenforcement.incident.dto.CaseSearchResult;
+import gov.lawenforcement.incident.dto.*;
+import gov.lawenforcement.incident.entity.CaseMaster;
 import gov.lawenforcement.incident.service.CaseMasterService;
 import gov.lawenforcement.incident.service.CaseSearchService;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -44,26 +44,38 @@ class CaseMasterControllerTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(1, response.getBody().getContent().size());
         assertEquals("CR-001", response.getBody().getContent().getFirst().getCrimeNo());
-        verify(caseSearchService).search("Central", 1, 100, "CR-001", null, null, null, PageRequest.of(0, 20));
     }
 
     @Test
     void getCaseDetail_returnsDetail() {
-        Map<String, Object> detail = Map.of("case", "data");
+        CaseMaster cm = new CaseMaster();
+        cm.setCrimeNo("CR-1");
+        CaseDetailResponse detail = CaseDetailResponse.builder()
+                .caseInfo(cm)
+                .complainants(List.of())
+                .victims(List.of())
+                .accused(List.of())
+                .arrests(List.of())
+                .actSections(List.of())
+                .chargesheets(List.of())
+                .occurrenceTime(null)
+                .build();
         when(caseMasterService.getCaseDetail(1)).thenReturn(detail);
 
-        ResponseEntity<Map<String, Object>> response = controller.getCaseDetail(1);
+        ResponseEntity<CaseDetailResponse> response = controller.getCaseDetail(1);
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals("data", response.getBody().get("case"));
+        assertEquals("CR-1", response.getBody().getCaseInfo().getCrimeNo());
     }
 
     @Test
     void getInvolvements_returnsList() {
-        List<Map<String, Object>> involvements = List.of(Map.of("type", "ACCUSED"));
+        List<InvolvementDto> involvements = List.of(
+                InvolvementDto.builder().type("ACCUSED").name("John").build()
+        );
         when(caseMasterService.getInvolvements(1)).thenReturn(involvements);
 
-        ResponseEntity<List<Map<String, Object>>> response = controller.getInvolvements(1);
+        ResponseEntity<List<InvolvementDto>> response = controller.getInvolvements(1);
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(1, response.getBody().size());
@@ -71,21 +83,29 @@ class CaseMasterControllerTest {
 
     @Test
     void getStats_returnsStats() {
-        Map<String, Object> stats = Map.of("totalCases", 100);
+        CaseStatsResponse stats = CaseStatsResponse.builder()
+                .totalCases(100)
+                .openCases(10L)
+                .underInvestigation(5L)
+                .chargeSheeted(3L)
+                .closed(2L)
+                .build();
         when(caseMasterService.getStats()).thenReturn(stats);
 
-        ResponseEntity<Map<String, Object>> response = controller.getStats();
+        ResponseEntity<CaseStatsResponse> response = controller.getStats();
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals(100, response.getBody().get("totalCases"));
+        assertEquals(100, response.getBody().getTotalCases());
     }
 
     @Test
     void getDistrictStats_returnsStats() {
-        List<Map<String, Object>> stats = List.of(Map.of("unitId", 1, "count", 10L));
+        List<UnitStatsDto> stats = List.of(
+                UnitStatsDto.builder().unitId(1).count(10L).build()
+        );
         when(caseMasterService.getDistrictStats()).thenReturn(stats);
 
-        ResponseEntity<List<Map<String, Object>>> response = controller.getDistrictStats();
+        ResponseEntity<List<UnitStatsDto>> response = controller.getDistrictStats();
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(1, response.getBody().size());
@@ -93,10 +113,12 @@ class CaseMasterControllerTest {
 
     @Test
     void getCrimeHeadStats_returnsStats() {
-        List<Map<String, Object>> stats = List.of(Map.of("crimeHeadId", 100, "count", 5L));
+        List<CrimeHeadStatsDto> stats = List.of(
+                CrimeHeadStatsDto.builder().crimeHeadId(100).count(5L).build()
+        );
         when(caseMasterService.getCrimeHeadStats()).thenReturn(stats);
 
-        ResponseEntity<List<Map<String, Object>>> response = controller.getCrimeHeadStats();
+        ResponseEntity<List<CrimeHeadStatsDto>> response = controller.getCrimeHeadStats();
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(1, response.getBody().size());

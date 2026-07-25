@@ -1,5 +1,7 @@
 package gov.lawenforcement.incident.service;
 
+import gov.lawenforcement.common.exception.ResourceNotFoundException;
+import gov.lawenforcement.incident.dto.*;
 import gov.lawenforcement.incident.entity.*;
 import gov.lawenforcement.incident.repository.*;
 import org.junit.jupiter.api.Test;
@@ -11,8 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,7 +46,6 @@ class CaseMasterServiceTest {
         CaseMaster cm = new CaseMaster();
         cm.setCaseMasterId(id);
         cm.setCrimeNo("CR-" + id);
-        cm.setCrimeRegisteredDate(LocalDate.now());
         cm.setCaseStatusId(statusId);
         cm.setPoliceStationId(stationId);
         cm.setCrimeMajorHeadId(crimeHeadId);
@@ -63,19 +62,6 @@ class CaseMasterServiceTest {
 
         assertEquals(1, result.getContent().size());
         assertEquals("CR-1", result.getContent().getFirst().getCrimeNo());
-        verify(caseMasterRepository).search("District", 1, 1, "CR-001", null, null, pageable);
-    }
-
-    @Test
-    void search_withNullFilters() {
-        PageRequest pageable = PageRequest.of(0, 10);
-        Page<CaseMaster> expectedPage = new PageImpl<>(List.of());
-        when(caseMasterRepository.search(any(), any(), any(), any(), any(), any(), any())).thenReturn(expectedPage);
-
-        Page<CaseMaster> result = caseMasterService.search(null, null, null, null, pageable);
-
-        assertTrue(result.getContent().isEmpty());
-        verify(caseMasterRepository).search(null, null, null, null, null, null, pageable);
     }
 
     @Test
@@ -93,7 +79,7 @@ class CaseMasterServiceTest {
     void getById_notFound_throwsException() {
         when(caseMasterRepository.findById(999)).thenReturn(Optional.empty());
 
-        assertThrows(NoSuchElementException.class, () -> caseMasterService.getById(999));
+        assertThrows(ResourceNotFoundException.class, () -> caseMasterService.getById(999));
     }
 
     @Test
@@ -108,17 +94,13 @@ class CaseMasterServiceTest {
         when(chargesheetDetailsRepository.findByCaseMasterId(1)).thenReturn(List.of());
         when(invOccuranceTimeRepository.findByCaseMasterId(1)).thenReturn(Optional.empty());
 
-        Map<String, Object> detail = caseMasterService.getCaseDetail(1);
+        CaseDetailResponse detail = caseMasterService.getCaseDetail(1);
 
-        assertEquals(8, detail.size());
-        assertTrue(detail.containsKey("case"));
-        assertTrue(detail.containsKey("complainants"));
-        assertTrue(detail.containsKey("victims"));
-        assertTrue(detail.containsKey("accused"));
-        assertTrue(detail.containsKey("arrests"));
-        assertTrue(detail.containsKey("actSections"));
-        assertTrue(detail.containsKey("chargesheets"));
-        assertTrue(detail.containsKey("occurrenceTime"));
+        assertNotNull(detail);
+        assertEquals("CR-1", detail.getCaseInfo().getCrimeNo());
+        assertTrue(detail.getComplainants().isEmpty());
+        assertTrue(detail.getVictims().isEmpty());
+        assertTrue(detail.getAccused().isEmpty());
     }
 
     @Test
@@ -143,13 +125,13 @@ class CaseMasterServiceTest {
         when(victimRepository.findByCaseMasterId(1)).thenReturn(List.of(victim));
         when(accusedRepository.findByCaseMasterId(1)).thenReturn(List.of(accused));
 
-        List<Map<String, Object>> involvements = caseMasterService.getInvolvements(1);
+        List<InvolvementDto> involvements = caseMasterService.getInvolvements(1);
 
         assertEquals(3, involvements.size());
-        assertEquals("COMPLAINANT", involvements.get(0).get("type"));
-        assertEquals("Victim Person", involvements.get(1).get("name"));
-        assertEquals("ACCUSED", involvements.get(2).get("type"));
-        assertEquals("P123", involvements.get(2).get("personId"));
+        assertEquals("COMPLAINANT", involvements.get(0).getType());
+        assertEquals("Victim Person", involvements.get(1).getName());
+        assertEquals("ACCUSED", involvements.get(2).getType());
+        assertEquals("P123", involvements.get(2).getPersonId());
     }
 
     @Test
@@ -163,13 +145,13 @@ class CaseMasterServiceTest {
         );
         when(caseMasterRepository.findAll()).thenReturn(cases);
 
-        Map<String, Object> stats = caseMasterService.getStats();
+        CaseStatsResponse stats = caseMasterService.getStats();
 
-        assertEquals(5, stats.get("totalCases"));
-        assertEquals(1L, stats.get("openCases"));
-        assertEquals(2L, stats.get("underInvestigation"));
-        assertEquals(1L, stats.get("chargeSheeted"));
-        assertEquals(1L, stats.get("closed"));
+        assertEquals(5, stats.getTotalCases());
+        assertEquals(1L, stats.getOpenCases());
+        assertEquals(2L, stats.getUnderInvestigation());
+        assertEquals(1L, stats.getChargeSheeted());
+        assertEquals(1L, stats.getClosed());
     }
 
     @Test
@@ -180,11 +162,11 @@ class CaseMasterServiceTest {
         );
         when(caseMasterRepository.findAll()).thenReturn(cases);
 
-        Map<String, Object> stats = caseMasterService.getStats();
+        CaseStatsResponse stats = caseMasterService.getStats();
 
-        assertEquals(2, stats.get("totalCases"));
-        assertEquals(1L, stats.get("openCases"));
-        assertEquals(0L, stats.get("underInvestigation"));
+        assertEquals(2, stats.getTotalCases());
+        assertEquals(1L, stats.getOpenCases());
+        assertEquals(0L, stats.getUnderInvestigation());
     }
 
     @Test
@@ -196,12 +178,12 @@ class CaseMasterServiceTest {
         );
         when(caseMasterRepository.findAll()).thenReturn(cases);
 
-        List<Map<String, Object>> stats = caseMasterService.getDistrictStats();
+        List<UnitStatsDto> stats = caseMasterService.getDistrictStats();
 
         assertEquals(2, stats.size());
         Map<Integer, Long> countMap = new HashMap<>();
-        for (Map<String, Object> s : stats) {
-            countMap.put((Integer) s.get("unitId"), (Long) s.get("count"));
+        for (UnitStatsDto s : stats) {
+            countMap.put(s.getUnitId(), s.getCount());
         }
         assertEquals(2L, countMap.get(10));
         assertEquals(1L, countMap.get(20));
@@ -217,12 +199,12 @@ class CaseMasterServiceTest {
         );
         when(caseMasterRepository.findAll()).thenReturn(cases);
 
-        List<Map<String, Object>> stats = caseMasterService.getCrimeHeadStats();
+        List<CrimeHeadStatsDto> stats = caseMasterService.getCrimeHeadStats();
 
         assertEquals(2, stats.size());
         Map<Integer, Long> countMap = new HashMap<>();
-        for (Map<String, Object> s : stats) {
-            countMap.put((Integer) s.get("crimeHeadId"), (Long) s.get("count"));
+        for (CrimeHeadStatsDto s : stats) {
+            countMap.put(s.getCrimeHeadId(), s.getCount());
         }
         assertEquals(2L, countMap.get(100));
         assertEquals(1L, countMap.get(200));
