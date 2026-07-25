@@ -70,12 +70,6 @@
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     mem_limit: 256m
-    healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
@@ -91,7 +85,7 @@
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     depends_on:
       zookeeper:
-        condition: service_healthy
+        condition: service_started
     mem_limit: 1g
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
@@ -193,8 +187,8 @@
     image: otel/opentelemetry-collector-contrib:0.104.0
     container_name: crime-otel-collector
     ports:
-      - "4317:4317"
-      - "4318:4318"
+      - "43170:4317"
+      - "43180:4318"
       - "8888:8888"
     volumes:
       - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yaml:ro
@@ -212,7 +206,7 @@
     ports:
       - "16686:16686"
       - "14250:14250"
-      - "4317:4317"
+      - "43171:4317"
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     mem_limit: 256m

@@ -5,6 +5,8 @@ server:
 spring:
   application:
     name: conversational-ai-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   security:
     oauth2:
       resourceserver:
@@ -32,10 +34,6 @@ eureka:
 logging:
   level:
     gov.lawenforcement.conversational: INFO
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
 management:
   tracing:

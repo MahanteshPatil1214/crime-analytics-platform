@@ -5,6 +5,8 @@ server:
 spring:
   application:
     name: graph-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   security:
     oauth2:
       resourceserver:
@@ -25,10 +27,6 @@ eureka:
   client:
     serviceUrl:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
 management:
   tracing:

@@ -5,6 +5,8 @@ server:
 spring:
   application:
     name: discovery-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 eureka:
   instance:
@@ -17,10 +19,6 @@ eureka:
   server:
     enableSelfPreservation: false
     evictionIntervalTimerInMs: 10000
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
 management:
   tracing:

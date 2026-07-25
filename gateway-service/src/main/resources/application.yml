@@ -5,6 +5,8 @@ server:
 spring:
   application:
     name: gateway-service
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -173,10 +175,6 @@ resilience4j:
     instances:
       conversationalAiServiceCB:
         timeoutDuration: 30s
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
 management:
   tracing:
