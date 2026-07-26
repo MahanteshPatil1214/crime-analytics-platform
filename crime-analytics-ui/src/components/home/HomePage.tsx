@@ -153,7 +153,7 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f7fa' }}>
+    <div style={{ minHeight: '100vh', background: '#f5f7fa', paddingBottom: 40 }}>
       {/* Hero */}
       <div
         style={{

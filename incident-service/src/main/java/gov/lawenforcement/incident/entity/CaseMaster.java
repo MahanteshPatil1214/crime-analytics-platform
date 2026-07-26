@@ -1,10 +1,8 @@
 package gov.lawenforcement.incident.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
@@ -17,7 +15,6 @@ public class CaseMaster {
     private Integer caseMasterId;
 
     @Column(name = "crime_no", unique = true, nullable = false, length = 30)
-    @NotBlank(message = "Crime number is required")
     private String crimeNo;
 
     @Column(name = "case_no", length = 20)
@@ -52,13 +49,13 @@ public class CaseMaster {
     private Integer courtId;
 
     @Column(name = "incident_from_date")
-    private Instant incidentFromDate;
+    private LocalDate incidentFromDate;
 
     @Column(name = "incident_to_date")
-    private Instant incidentToDate;
+    private LocalDate incidentToDate;
 
     @Column(name = "info_received_ps_date")
-    private Instant infoReceivedPsDate;
+    private LocalDate infoReceivedPsDate;
 
     @Column(name = "latitude", precision = 10, scale = 7)
     private BigDecimal latitude;
@@ -165,27 +162,27 @@ public class CaseMaster {
         this.courtId = courtId;
     }
 
-    public Instant getIncidentFromDate() {
+    public LocalDate getIncidentFromDate() {
         return incidentFromDate;
     }
 
-    public void setIncidentFromDate(Instant incidentFromDate) {
+    public void setIncidentFromDate(LocalDate incidentFromDate) {
         this.incidentFromDate = incidentFromDate;
     }
 
-    public Instant getIncidentToDate() {
+    public LocalDate getIncidentToDate() {
         return incidentToDate;
     }
 
-    public void setIncidentToDate(Instant incidentToDate) {
+    public void setIncidentToDate(LocalDate incidentToDate) {
         this.incidentToDate = incidentToDate;
     }
 
-    public Instant getInfoReceivedPsDate() {
+    public LocalDate getInfoReceivedPsDate() {
         return infoReceivedPsDate;
     }
 
-    public void setInfoReceivedPsDate(Instant infoReceivedPsDate) {
+    public void setInfoReceivedPsDate(LocalDate infoReceivedPsDate) {
         this.infoReceivedPsDate = infoReceivedPsDate;
     }
 

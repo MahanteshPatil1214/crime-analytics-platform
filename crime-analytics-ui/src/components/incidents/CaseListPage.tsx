@@ -79,10 +79,10 @@ export const CaseListPage: React.FC = () => {
   const openEditModal = async (record: CaseSearchResult) => {
     try {
       const detail = await caseApi.getById(record.caseMasterId);
-      const c = detail.case;
+      const c = detail.caseInfo;
+      setEditingCase(record);
+      setModalOpen(true);
       form.setFieldsValue({
-        crimeNo: c.crimeNo,
-        caseNo: c.caseNo,
         crimeRegisteredDate: c.crimeRegisteredDate ? dayjs(c.crimeRegisteredDate) : null,
         policeStationId: c.policeStationId,
         caseCategoryId: c.caseCategoryId,
@@ -97,8 +97,6 @@ export const CaseListPage: React.FC = () => {
         latitude: c.latitude,
         longitude: c.longitude,
       });
-      setEditingCase(record);
-      setModalOpen(true);
     } catch {
       message.error('Failed to load case details');
     }
@@ -109,8 +107,6 @@ export const CaseListPage: React.FC = () => {
       const values = await form.validateFields();
       setSubmitting(true);
       const payload: Partial<CaseMaster> = {
-        crimeNo: values.crimeNo,
-        caseNo: values.caseNo,
         crimeRegisteredDate: values.crimeRegisteredDate?.format('YYYY-MM-DD'),
         policeStationId: values.policeStationId || null,
         caseCategoryId: values.caseCategoryId || null,
@@ -342,12 +338,6 @@ export const CaseListPage: React.FC = () => {
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <Form.Item name="crimeNo" label="Crime No" rules={[{ required: true, message: 'Required' }]}>
-              <Input placeholder="e.g. 001/2026" />
-            </Form.Item>
-            <Form.Item name="caseNo" label="Case No">
-              <Input placeholder="Case Number" />
-            </Form.Item>
             <Form.Item name="crimeRegisteredDate" label="Registration Date">
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>

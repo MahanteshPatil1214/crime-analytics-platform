@@ -2,6 +2,8 @@
 
 A production-grade, microservices-based Crime Analytics Platform built with **Spring Boot 3.3.2**, **Java 21**, and **Spring Cloud**. Designed for law enforcement agencies to manage cases, track persons of interest, analyze criminal networks, monitor financial trails, and generate statutory reports.
 
+> **Disclaimer:** This is a fictional demonstration project. All names, places, institutions, case numbers, and data used herein are entirely fictional and do not represent any real persons, agencies, or events. This project is built solely to demonstrate software architecture and engineering capabilities.
+
 ---
 
 ## Table of Contents

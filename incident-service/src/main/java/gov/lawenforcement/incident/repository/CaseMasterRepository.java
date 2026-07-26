@@ -17,6 +17,8 @@ public interface CaseMasterRepository extends JpaRepository<CaseMaster, Integer>
 
     Optional<CaseMaster> findByCrimeNo(String crimeNo);
 
+    long countByCaseNoStartingWith(String prefix);
+
     Page<CaseMaster> findByCaseStatusId(Integer statusId, Pageable pageable);
 
     List<CaseMaster> findByPoliceStationId(Integer stationId);

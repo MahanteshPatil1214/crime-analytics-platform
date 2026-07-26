@@ -25,7 +25,7 @@ export const LoginPage: React.FC = () => {
   return (
     <div style={{
       display: 'flex', justifyContent: 'center', alignItems: 'center',
-      minHeight: '100vh', background: 'linear-gradient(135deg, #001529 0%, #003366 100%)',
+      minHeight: '100vh', background: 'linear-gradient(135deg, #001529 0%, #003366 100%)', paddingBottom: 40,
     }}>
       <Card style={{ width: 400, textAlign: 'center', borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
         <SecurityScanOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: 16 }} />

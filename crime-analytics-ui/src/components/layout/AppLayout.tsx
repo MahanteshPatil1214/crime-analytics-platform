@@ -132,7 +132,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
           </Button>
         </Header>
         <div style={{ height: 3, background: 'linear-gradient(90deg, #1890ff, #722ed1, #13c2c2)' }} />
-        <Content style={{ margin: 0, padding: 0, background: '#f5f7fa' }}>
+        <Content style={{ margin: 0, padding: 0, background: '#f5f7fa', paddingBottom: 32 }}>
           {children}
         </Content>
       </Layout>

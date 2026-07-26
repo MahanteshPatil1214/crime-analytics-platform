@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -116,14 +118,21 @@ public class CaseMasterService {
 
     @Auditable(action = "CREATE", entityType = "CASE", description = "Create new case")
     public CaseMaster createCase(CaseMaster caseMaster) {
+        LocalDate now = LocalDate.now();
+        String datePart = now.format(DateTimeFormatter.ofPattern("yy/MM"));
+
+        long crimeCount = caseMasterRepository.count();
+        caseMaster.setCrimeNo(String.format("CR/%s/%04d", datePart, crimeCount + 1));
+
+        long caseCount = caseMasterRepository.countByCaseNoStartingWith("CS/" + datePart);
+        caseMaster.setCaseNo(String.format("CS/%s/%04d", datePart, caseCount + 1));
+
         return caseMasterRepository.save(caseMaster);
     }
 
     @Auditable(action = "UPDATE", entityType = "CASE", description = "Update case details")
     public CaseMaster updateCase(Integer id, CaseMaster updates) {
         CaseMaster existing = getById(id);
-        existing.setCrimeNo(updates.getCrimeNo());
-        existing.setCaseNo(updates.getCaseNo());
         existing.setCrimeRegisteredDate(updates.getCrimeRegisteredDate());
         existing.setPolicePersonId(updates.getPolicePersonId());
         existing.setPoliceStationId(updates.getPoliceStationId());

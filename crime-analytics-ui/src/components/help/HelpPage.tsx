@@ -183,7 +183,7 @@ export const HelpPage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto', paddingBottom: 64 }}>
       <Card bordered={false} style={{ marginBottom: 24, background: 'linear-gradient(135deg, #e6f7ff 0%, #f9f0ff 100%)' }}>
         <Space align="center" size={12}>
           <InfoCircleOutlined style={{ fontSize: 32, color: '#1890ff' }} />

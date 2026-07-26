@@ -147,10 +147,8 @@ export const CaseDetailPage: React.FC = () => {
 
   const openEditModal = () => {
     if (!detail) return;
-    const { case: c } = detail;
+    const c = detail.caseInfo;
     editForm.setFieldsValue({
-      crimeNo: c.crimeNo,
-      caseNo: c.caseNo,
       crimeRegisteredDate: c.crimeRegisteredDate ? dayjs(c.crimeRegisteredDate) : null,
       policeStationId: c.policeStationId,
       caseCategoryId: c.caseCategoryId,
@@ -558,18 +556,6 @@ export const CaseDetailPage: React.FC = () => {
         width={800}
       >
         <Form form={editForm} layout="vertical">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="crimeNo" label="Crime No">
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="caseNo" label="Case No">
-                <Input />
-              </Form.Item>
-            </Col>
-          </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="crimeRegisteredDate" label="Crime Registered Date">
