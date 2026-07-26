@@ -38,11 +38,7 @@ eureka:
 
 management:
   tracing:
-    sampling:
-      probability: 1.0
-  otlp:
-    tracing:
-      endpoint: http://localhost:43180/v1/traces
+    enabled: false
   endpoints:
     web:
       exposure:
