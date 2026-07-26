@@ -7,6 +7,11 @@ spring:
     name: discovery-service
   lifecycle:
     timeout-per-shutdown-phase: 30s
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration
 
 eureka:
   instance:
