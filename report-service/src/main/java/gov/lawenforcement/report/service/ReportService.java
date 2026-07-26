@@ -64,7 +64,7 @@ public class ReportService {
     private static final Font FONT_SIGN_TITLE = new Font(Font.COURIER, 8, Font.BOLD, BLACK);
 
     private final WebClient webClient = WebClient.builder()
-            .baseUrl("http://localhost:8080")
+            .baseUrl(System.getenv().getOrDefault("INCIDENT_SERVICE_URL", "http://localhost:8082"))
             .build();
 
     public byte[] generateFirReport(Integer caseId) {

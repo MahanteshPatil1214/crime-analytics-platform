@@ -20,7 +20,7 @@ export interface CaseMaster {
 }
 
 export interface CaseDetail {
-  case: CaseMaster;
+  caseInfo: CaseMaster;
   complainants: Complainant[];
   victims: Victim[];
   accused: Accused[];

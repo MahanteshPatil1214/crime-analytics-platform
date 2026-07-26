@@ -11,18 +11,18 @@ $LogDir = Join-Path $ProjectRoot "logs"
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 
 $ServiceConfig = @{
-    "discovery"        = @{ Port = 8761; Heap = "128m"; InitHeap = "64m";  Depends = @();               Dir = "discovery-service" }
-    "gateway"          = @{ Port = 8080; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery");     Dir = "gateway-service" }
-    "incident"         = @{ Port = 8082; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "incident-service" }
-    "person"           = @{ Port = 8083; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "person-service" }
-    "graph"            = @{ Port = 8084; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "graph-service" }
-    "search"           = @{ Port = 8085; Heap = "512m"; InitHeap = "256m"; Depends = @("discovery","gateway"); Dir = "search-service" }
-    "analytics"        = @{ Port = 8086; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "analytics-service" }
-    "conversational-ai" = @{ Port = 8087; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "conversational-ai-service" }
-    "financial"        = @{ Port = 8088; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "financial-service" }
-    "report"           = @{ Port = 8089; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "report-service" }
-    "notification"     = @{ Port = 8090; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "notification-service" }
-    "etl"              = @{ Port = 8091; Heap = "256m"; InitHeap = "128m"; Depends = @("discovery","gateway"); Dir = "etl-service" }
+    "discovery"        = @{ Port = 8761; Heap = "96m";  InitHeap = "48m";  Depends = @();               Dir = "discovery-service" }
+    "gateway"          = @{ Port = 8080; Heap = "96m";  InitHeap = "48m";  Depends = @("discovery");     Dir = "gateway-service" }
+    "incident"         = @{ Port = 8082; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "incident-service" }
+    "person"           = @{ Port = 8083; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "person-service" }
+    "graph"            = @{ Port = 8084; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "graph-service" }
+    "search"           = @{ Port = 8085; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "search-service" }
+    "analytics"        = @{ Port = 8086; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "analytics-service" }
+    "conversational-ai" = @{ Port = 8087; Heap = "128m"; InitHeap = "64m"; Depends = @("discovery","gateway"); Dir = "conversational-ai-service" }
+    "financial"        = @{ Port = 8088; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "financial-service" }
+    "report"           = @{ Port = 8089; Heap = "96m";  InitHeap = "48m";  Depends = @("discovery","gateway"); Dir = "report-service" }
+    "notification"     = @{ Port = 8090; Heap = "96m";  InitHeap = "48m";  Depends = @("discovery","gateway"); Dir = "notification-service" }
+    "etl"              = @{ Port = 8091; Heap = "128m"; InitHeap = "64m";  Depends = @("discovery","gateway"); Dir = "etl-service" }
 }
 
 function Write-Banner {

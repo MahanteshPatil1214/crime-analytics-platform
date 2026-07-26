@@ -183,7 +183,7 @@ export const CaseDetailPage: React.FC = () => {
       if (payload.incidentToDate) {
         payload.incidentToDate = payload.incidentToDate.format('YYYY-MM-DD');
       }
-      await caseApi.update(detail.case.caseMasterId, payload);
+      await caseApi.update(detail.caseInfo.caseMasterId, payload);
       message.success('Case updated successfully');
       setEditModalOpen(false);
       await reloadCase();
@@ -198,7 +198,7 @@ export const CaseDetailPage: React.FC = () => {
 
   const openStatusModal = () => {
     if (!detail) return;
-    statusForm.setFieldsValue({ statusId: detail.case.caseStatusId });
+    statusForm.setFieldsValue({ statusId: detail.caseInfo.caseStatusId });
     setStatusModalOpen(true);
   };
 
@@ -207,7 +207,7 @@ export const CaseDetailPage: React.FC = () => {
     try {
       const values = await statusForm.validateFields();
       setStatusSaving(true);
-      await caseApi.updateStatus(detail.case.caseMasterId, values.statusId);
+      await caseApi.updateStatus(detail.caseInfo.caseMasterId, values.statusId);
       message.success('Status updated successfully');
       setStatusModalOpen(false);
       await reloadCase();
@@ -223,7 +223,7 @@ export const CaseDetailPage: React.FC = () => {
   const handleDelete = async () => {
     if (!detail) return;
     try {
-      await caseApi.delete(detail.case.caseMasterId);
+      await caseApi.delete(detail.caseInfo.caseMasterId);
       message.success('Case deleted');
       navigate('/incidents');
     } catch {
@@ -234,7 +234,7 @@ export const CaseDetailPage: React.FC = () => {
   if (loading) return <div style={{ padding: 24 }}><Spin size="large" /></div>;
   if (!detail) return <div style={{ padding: 24 }}><Empty description="Case not found" /></div>;
 
-  const { case: c, actSections, arrests } = detail;
+  const { caseInfo: c, actSections, arrests } = detail;
   const totalPersons = involvements.length;
   const accusedCount = involvements.filter((i) => i.type === 'ACCUSED').length;
 
