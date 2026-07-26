@@ -21,12 +21,6 @@ eureka:
     evictionIntervalTimerInMs: 10000
 
 management:
-  tracing:
-    sampling:
-      probability: 1.0
-  otlp:
-    tracing:
-      endpoint: http://localhost:4318/v1/traces
   endpoints:
     web:
       exposure:
@@ -34,15 +28,14 @@ management:
   endpoint:
     health:
       show-details: always
-  health:
-    eureka:
-      enabled: false
   metrics:
     export:
       prometheus:
         enabled: true
     tags:
       application: discovery-service
+  tracing:
+    enabled: false
     distribution:
       percentiles-histogram:
         http.server.requests: true
