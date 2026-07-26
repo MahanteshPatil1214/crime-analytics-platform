@@ -5,7 +5,7 @@ import java.util.List;
 
 public class CaseDetailResponse {
 
-    @JsonProperty("case")
+    @JsonProperty("caseInfo")
     private CaseInfo caseInfo;
     private List<ComplainantInfo> complainants;
     private List<VictimInfo> victims;
